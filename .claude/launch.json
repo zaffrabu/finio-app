@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Vite Dev Server",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["/Users/zaffraburga/finanzas-app/.claude/start-dev.sh"],
+      "port": 5173
+    }
+  ]
+}
