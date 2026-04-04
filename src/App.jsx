@@ -96,11 +96,12 @@ export default function App() {
 
   if (loading) return <LoadingScreen />
 
-  // Paywall checks before rendering AppInner (avoids Rules of Hooks violations)
+  // Paywall disabled — all registered users have access
+  // Re-enable when ready to monetize:
+  // if (!profileFound || (role === 'admin' && subscriptionStatus === 'pending')) {
+  //   return <Paywall user={user} onSignOut={signOut} />
+  // }
   function renderApp() {
-    if (!profileFound || (role === 'admin' && subscriptionStatus === 'pending')) {
-      return <Paywall user={user} onSignOut={signOut} />
-    }
     return <AppInner user={user} signOut={signOut} role={role} />
   }
 
