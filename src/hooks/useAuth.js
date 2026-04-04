@@ -17,22 +17,18 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Single listener handles both initial session and future changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null
       setUser(u)
-
       if (u) {
         const p = await fetchProfile()
         setProfile(p)
       } else {
         setProfile(null)
       }
-
       setLoading(false)
     })
 
-    // Safety timeout
     const timeout = setTimeout(() => setLoading(false), 8000)
 
     return () => {
@@ -41,9 +37,14 @@ export function useAuth() {
     }
   }, [])
 
-  async function signInWithEmail(email) {
-    const redirectTo = window.location.origin + (import.meta.env.BASE_URL || '/')
-    return supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } })
+  async function signIn(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  }
+
+  async function signUp(email, password) {
+    const { error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
   }
 
   async function signOut() {
@@ -56,7 +57,8 @@ export function useAuth() {
     role: profile?.role ?? null,
     subscriptionStatus: profile?.subscription_status ?? null,
     profileFound: profile !== null,
-    signInWithEmail,
+    signIn,
+    signUp,
     signOut,
   }
 }

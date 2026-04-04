@@ -1,37 +1,57 @@
 import { useState } from 'react'
 
-export default function Login({ signInWithEmail }) {
-  const [email, setEmail]   = useState('')
-  const [sent, setSent]     = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+export default function Login({ signIn, signUp }) {
+  const [mode, setMode]         = useState('login') // 'login' | 'register'
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+  const [showPass, setShowPass] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!email.trim()) return
-    setLoading(true)
     setError('')
-    const { error: err } = await signInWithEmail(email.trim())
-    setLoading(false)
-    if (err) {
-      setError(err.message)
-    } else {
-      setSent(true)
+    if (!email.trim() || !password) return
+
+    if (mode === 'register' && password !== confirm) {
+      setError('Las contraseñas no coinciden')
+      return
+    }
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
+    setLoading(true)
+    try {
+      if (mode === 'login') {
+        await signIn(email.trim(), password)
+      } else {
+        await signUp(email.trim(), password)
+      }
+    } catch (err) {
+      setError(
+        err.message === 'Invalid login credentials'
+          ? 'Email o contraseña incorrectos'
+          : err.message === 'User already registered'
+          ? 'Este email ya está registrado. Inicia sesión.'
+          : err.message
+      )
+    } finally {
+      setLoading(false)
     }
   }
 
+  const inputCls = "w-full text-sm border border-border rounded-lg px-3 py-2.5 bg-white text-primary focus:outline-none focus:border-tri-400 focus:ring-2 focus:ring-tri-400/20 transition-colors"
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: '#F2F9FB' }}
-    >
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#F2F9FB' }}>
       <div className="w-full max-w-sm">
+
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3"
-            style={{ backgroundColor: '#185FA5' }}
-          >
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3" style={{ backgroundColor: '#185FA5' }}>
             <span className="text-white font-bold text-xl leading-none" style={{ fontFamily: 'Georgia, serif' }}>F</span>
           </div>
           <h1 className="text-2xl font-medium tracking-tight" style={{ color: '#042C53' }}>Finio</h1>
@@ -39,79 +59,105 @@ export default function Login({ signInWithEmail }) {
         </div>
 
         <div className="bg-white rounded-2xl border border-border shadow-card px-6 py-8">
-          {!sent ? (
-            <>
-              <h2 className="text-base font-medium text-primary mb-1">Accede a tu cuenta</h2>
-              <p className="text-sm text-muted mb-6">
-                Te enviamos un enlace mágico a tu correo. Sin contraseña.
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-secondary mb-1.5">
-                    Correo electrónico
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    required
-                    autoFocus
-                    className="w-full text-sm border border-border rounded-lg px-3 py-2.5 bg-white text-primary focus:outline-none focus:border-tri-400 focus:ring-2 focus:ring-tri-400/20 transition-colors"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-xs text-red-500">{error}</p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim()}
-                  className="w-full py-2.5 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: '#185FA5' }}
-                >
-                  {loading ? 'Enviando...' : 'Continuar con email'}
-                </button>
-              </form>
-
-              <p className="text-xs text-muted text-center mt-5">
-                ¿Primera vez? El registro es automático al acceder.
-              </p>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: '#EAF3DE' }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
-                </svg>
-              </div>
-              <h2 className="text-base font-medium text-primary mb-2">Revisa tu correo</h2>
-              <p className="text-sm text-muted mb-1">
-                Enviamos un enlace de acceso a:
-              </p>
-              <p className="text-sm font-medium" style={{ color: '#185FA5' }}>{email}</p>
-              <p className="text-xs text-muted mt-4">
-                Pulsa el enlace del correo para entrar a Finio.
-              </p>
+          {/* Mode tabs */}
+          <div className="flex rounded-lg overflow-hidden border border-border mb-6">
+            {['login', 'register'].map(m => (
               <button
-                onClick={() => setSent(false)}
-                className="mt-4 text-xs text-muted hover:text-secondary transition-colors"
+                key={m}
+                onClick={() => { setMode(m); setError('') }}
+                className="flex-1 text-sm py-2 font-medium transition-colors"
+                style={mode === m
+                  ? { backgroundColor: '#185FA5', color: '#fff' }
+                  : { backgroundColor: '#fff', color: '#9CA3AF' }}
               >
-                Usar otro correo
+                {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
               </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-medium text-secondary mb-1.5">Correo electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                required
+                autoFocus
+                className={inputCls}
+              />
             </div>
-          )}
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-medium text-secondary mb-1.5">Contraseña</label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  className={inputCls + ' pr-10'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
+                >
+                  {showPass ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm password (register only) */}
+            {mode === 'register' && (
+              <div>
+                <label className="block text-xs font-medium text-secondary mb-1.5">Confirmar contraseña</label>
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="Repite tu contraseña"
+                  required
+                  className={inputCls}
+                />
+              </div>
+            )}
+
+            {error && (
+              <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAECE7', color: '#993C1D' }}>
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !email.trim() || !password}
+              className="w-full py-2.5 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#185FA5' }}
+            >
+              {loading
+                ? (mode === 'login' ? 'Entrando...' : 'Creando cuenta...')
+                : (mode === 'login' ? 'Entrar' : 'Crear cuenta')}
+            </button>
+          </form>
         </div>
 
-        <p className="text-center text-xs text-muted mt-6">
-          Finio · Finanzas personales inteligentes
-        </p>
+        <p className="text-center text-xs text-muted mt-6">Finio · Finanzas personales inteligentes</p>
       </div>
     </div>
   )

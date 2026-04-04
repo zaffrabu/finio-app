@@ -92,7 +92,7 @@ function AppInner({ user, signOut, role }) {
 }
 
 export default function App() {
-  const { user, loading, role, subscriptionStatus, profileFound, signInWithEmail, signOut } = useAuth()
+  const { user, loading, role, subscriptionStatus, profileFound, signIn, signUp, signOut } = useAuth()
 
   if (loading) return <LoadingScreen />
 
@@ -110,7 +110,7 @@ export default function App() {
       <Routes>
         <Route
           path="/login"
-          element={user ? <Navigate to="/" replace /> : <Login signInWithEmail={signInWithEmail} />}
+          element={user ? <Navigate to="/" replace /> : <Login signIn={signIn} signUp={signUp} />}
         />
         <Route
           path="/*"
