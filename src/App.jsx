@@ -35,7 +35,7 @@ function LoadingScreen() {
   )
 }
 
-function AppInner({ user, signOut, role, subscriptionStatus }) {
+function AppInner({ user, signOut, role, subscriptionStatus, profileFound }) {
   const { transactions, addTransactions, updateCategory } = useTransactions(user)
   const cats = useCategories()
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -66,13 +66,13 @@ function AppInner({ user, signOut, role, subscriptionStatus }) {
   })
   const coachAlertCount = (cats?.budgets || []).filter(b => (spentByCat[b.category] || 0) > b.budget).length
 
-  // Profile still loading or not created yet → paywall
-  if (role === null) {
+  // Pending users see paywall (only when profile is confirmed loaded)
+  if (profileFound && role === 'admin' && subscriptionStatus === 'pending') {
     return <Paywall user={user} onSignOut={signOut} />
   }
 
-  // Pending users see paywall
-  if (role === 'admin' && subscriptionStatus === 'pending') {
+  // Profile not found after loading → paywall
+  if (!profileFound) {
     return <Paywall user={user} onSignOut={signOut} />
   }
 
@@ -102,7 +102,7 @@ function AppInner({ user, signOut, role, subscriptionStatus }) {
 }
 
 export default function App() {
-  const { user, loading, role, subscriptionStatus, signInWithEmail, signOut } = useAuth()
+  const { user, loading, role, subscriptionStatus, profileFound, signInWithEmail, signOut } = useAuth()
 
   if (loading) return <LoadingScreen />
 
@@ -116,7 +116,7 @@ export default function App() {
         <Route
           path="/*"
           element={user
-            ? <AppInner user={user} signOut={signOut} role={role} subscriptionStatus={subscriptionStatus} />
+            ? <AppInner user={user} signOut={signOut} role={role} subscriptionStatus={subscriptionStatus} profileFound={profileFound} />
             : <Navigate to="/login" replace />}
         />
       </Routes>

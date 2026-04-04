@@ -3,46 +3,58 @@ import { supabase } from '../lib/supabase'
 
 async function fetchProfile(userId) {
   if (!userId) return null
-  // Use RPC to bypass RLS — returns [{role, subscription_status}] for current user
-  const { data } = await supabase.rpc('finio_get_my_profile')
-  return data?.[0] || null
+  try {
+    const { data, error } = await supabase.rpc('finio_get_my_profile')
+    if (error) throw error
+    return data?.[0] || null
+  } catch {
+    return null
+  }
 }
 
 export function useAuth() {
-  const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]               = useState(null)
+  const [profile, setProfile]         = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(true)
 
   useEffect(() => {
-    // Safety: never stay loading more than 6 seconds
-    const timeout = setTimeout(() => setLoading(false), 6000)
-
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null
       setUser(u)
-      try {
-        const p = await fetchProfile(u?.id)
+      setAuthLoading(false)
+
+      if (u) {
+        const p = await fetchProfile(u.id)
         setProfile(p)
-      } catch {
-        setProfile(null)
-      } finally {
-        clearTimeout(timeout)
-        setLoading(false)
       }
+      setProfileLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null
       setUser(u)
-      try {
-        const p = await fetchProfile(u?.id)
+      if (u) {
+        setProfileLoading(true)
+        const p = await fetchProfile(u.id)
         setProfile(p)
-      } catch {
+        setProfileLoading(false)
+      } else {
         setProfile(null)
+        setProfileLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Safety timeout — never stay loading more than 8s
+    const timeout = setTimeout(() => {
+      setAuthLoading(false)
+      setProfileLoading(false)
+    }, 8000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   async function signInWithEmail(email) {
@@ -56,9 +68,10 @@ export function useAuth() {
 
   return {
     user,
-    loading,
+    loading: authLoading || profileLoading,
     role: profile?.role ?? null,
     subscriptionStatus: profile?.subscription_status ?? null,
+    profileFound: profile !== null,
     signInWithEmail,
     signOut,
   }
