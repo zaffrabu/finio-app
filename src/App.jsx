@@ -35,7 +35,7 @@ function LoadingScreen() {
   )
 }
 
-function AppInner({ user, signOut, role, subscriptionStatus, profileFound }) {
+function AppInner({ user, signOut, role }) {
   const { transactions, addTransactions, updateCategory } = useTransactions(user)
   const cats = useCategories()
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -65,16 +65,6 @@ function AppInner({ user, signOut, role, subscriptionStatus, profileFound }) {
     spentByCat[t.category] = (spentByCat[t.category] || 0) + Math.abs(t.amount)
   })
   const coachAlertCount = (cats?.budgets || []).filter(b => (spentByCat[b.category] || 0) > b.budget).length
-
-  // Pending users see paywall (only when profile is confirmed loaded)
-  if (profileFound && role === 'admin' && subscriptionStatus === 'pending') {
-    return <Paywall user={user} onSignOut={signOut} />
-  }
-
-  // Profile not found after loading → paywall
-  if (!profileFound) {
-    return <Paywall user={user} onSignOut={signOut} />
-  }
 
   const shared = { transactions, selectedMonth, onMonthChange: setSelectedMonth, cats }
   const isSuperadmin = role === 'superadmin'
@@ -106,6 +96,14 @@ export default function App() {
 
   if (loading) return <LoadingScreen />
 
+  // Paywall checks before rendering AppInner (avoids Rules of Hooks violations)
+  function renderApp() {
+    if (!profileFound || (role === 'admin' && subscriptionStatus === 'pending')) {
+      return <Paywall user={user} onSignOut={signOut} />
+    }
+    return <AppInner user={user} signOut={signOut} role={role} />
+  }
+
   return (
     <HashRouter>
       <Routes>
@@ -115,9 +113,7 @@ export default function App() {
         />
         <Route
           path="/*"
-          element={user
-            ? <AppInner user={user} signOut={signOut} role={role} subscriptionStatus={subscriptionStatus} profileFound={profileFound} />
-            : <Navigate to="/login" replace />}
+          element={user ? renderApp() : <Navigate to="/login" replace />}
         />
       </Routes>
     </HashRouter>
