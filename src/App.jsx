@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
@@ -7,8 +7,11 @@ import Upload from './pages/Upload'
 import Categories from './pages/Categories'
 import Presupuesto from './pages/Presupuesto'
 import Coach from './pages/Coach'
+import Onboarding from './components/ui/Onboarding'
 import { useTransactions } from './hooks/useTransactions'
 import { useCategories } from './hooks/useCategories'
+
+const ONBOARDING_KEY = 'finio_onboarding_done'
 
 export default function App() {
   const { transactions, addTransactions, updateCategory } = useTransactions()
@@ -18,10 +21,23 @@ export default function App() {
     return new Date(d.getFullYear(), d.getMonth(), 1)
   })
 
+  // Show onboarding if never dismissed AND no transactions yet
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  useEffect(() => {
+    const done = localStorage.getItem(ONBOARDING_KEY)
+    if (!done && transactions.length === 0) setShowOnboarding(true)
+  }, [transactions.length])
+
+  function dismissOnboarding() {
+    localStorage.setItem(ONBOARDING_KEY, '1')
+    setShowOnboarding(false)
+  }
+
   const shared = { transactions, selectedMonth, onMonthChange: setSelectedMonth, cats }
 
   return (
     <HashRouter>
+      {showOnboarding && <Onboarding onDismiss={dismissOnboarding} />}
       <Routes>
         <Route element={<Layout />}>
           <Route path="/"              element={<Dashboard    {...shared} />} />
