@@ -7,9 +7,9 @@ const STORAGE_KEY = 'finio_transactions'
 function localLoad() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : sampleTransactions
+    return stored ? JSON.parse(stored) : []
   } catch {
-    return sampleTransactions
+    return []
   }
 }
 
@@ -17,56 +17,71 @@ function localSave(txs) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(txs)) } catch {}
 }
 
-export function useTransactions() {
-  const [transactions, setTransactions] = useState(localLoad)
+export function useTransactions(user) {
+  const [transactions, setTransactions] = useState(() => user ? localLoad() : sampleTransactions)
   const [syncing, setSyncing]           = useState(true)
 
-  // On mount — load from Supabase; fall back to localStorage if empty or error
   useEffect(() => {
     async function load() {
+      if (!user) {
+        // Not logged in — show sample data
+        setTransactions(sampleTransactions)
+        setSyncing(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
 
-      if (!error && data && data.length > 0) {
-        setTransactions(data)
-        localSave(data)
+      if (!error && data) {
+        const merged = data.length > 0 ? data : localLoad()
+        setTransactions(merged)
+        if (data.length > 0) localSave(data)
+      } else {
+        setTransactions(localLoad())
       }
       setSyncing(false)
     }
     load()
-  }, [])
+  }, [user?.id])
 
   async function addTransactions(newItems) {
     const withIds = newItems.map(item => ({
       ...item,
-      id: crypto.randomUUID(),
+      id: item.id || crypto.randomUUID(),
+      user_id: user?.id || null,
     }))
 
-    // Optimistic update
     setTransactions(prev => {
       const next = [...withIds, ...prev]
       localSave(next)
       return next
     })
 
-    const { error } = await supabase.from('transactions').insert(withIds)
-    if (error) console.error('Supabase insert error:', error.message)
+    if (user) {
+      const { error } = await supabase.from('transactions').insert(withIds)
+      if (error) console.error('Supabase insert error:', error.message)
+    }
   }
 
   async function updateCategory(id, category) {
     setTransactions(prev => {
-      const next = prev.map(t => (t.id === id ? { ...t, category } : t))
+      const next = prev.map(t => t.id === id ? { ...t, category } : t)
       localSave(next)
       return next
     })
 
-    const { error } = await supabase
-      .from('transactions')
-      .update({ category })
-      .eq('id', id)
-    if (error) console.error('Supabase update error:', error.message)
+    if (user) {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ category })
+        .eq('id', id)
+        .eq('user_id', user.id)
+      if (error) console.error('Supabase update error:', error.message)
+    }
   }
 
   return { transactions, addTransactions, updateCategory, syncing }

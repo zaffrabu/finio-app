@@ -56,7 +56,7 @@ function NavItem({ to, label, end, icon, collapsed, onClick }) {
   )
 }
 
-export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose, sidebarWidth }) {
+export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose, sidebarWidth, user, onSignOut }) {
   // On mobile: slide in/out via transform. On desktop: always visible.
   const translateClass = isMobile
     ? (mobileOpen ? 'translate-x-0' : '-translate-x-full')
@@ -138,12 +138,47 @@ export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMo
         ))}
       </nav>
 
-      {/* Footer */}
-      {(!collapsed || isMobile) && (
-        <div className="px-5 py-4 border-t border-border/50 flex-shrink-0">
-          <p className="text-2xs text-muted whitespace-nowrap">Finio · {new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</p>
-        </div>
-      )}
+      {/* Footer — user info + logout */}
+      <div className="border-t border-border/50 flex-shrink-0">
+        {(!collapsed || isMobile) ? (
+          <div className="px-3 py-3 flex items-center gap-2.5">
+            {/* Avatar */}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+              style={{ backgroundColor: '#185FA5' }}
+            >
+              {user?.email?.[0]?.toUpperCase() ?? 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-primary truncate">{user?.email ?? 'Usuario'}</p>
+              <p className="text-2xs text-muted">Finio personal</p>
+            </div>
+            <button
+              onClick={onSignOut}
+              title="Cerrar sesión"
+              className="p-1.5 rounded text-muted hover:text-primary hover:bg-page transition-colors flex-shrink-0"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onSignOut}
+            title="Cerrar sesión"
+            className="w-full flex items-center justify-center py-3 text-muted hover:text-primary hover:bg-page transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Desktop collapse toggle — hidden on mobile */}
       {!isMobile && (
