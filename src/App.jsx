@@ -8,6 +8,8 @@ import Categories from './pages/Categories'
 import Presupuesto from './pages/Presupuesto'
 import Coach from './pages/Coach'
 import Settings from './pages/Settings'
+import Admin from './pages/Admin'
+import Paywall from './pages/Paywall'
 import Login from './pages/Login'
 import Onboarding from './components/ui/Onboarding'
 import { useTransactions } from './hooks/useTransactions'
@@ -33,7 +35,7 @@ function LoadingScreen() {
   )
 }
 
-function AppInner({ user, signOut }) {
+function AppInner({ user, signOut, role, subscriptionStatus }) {
   const { transactions, addTransactions, updateCategory } = useTransactions(user)
   const cats = useCategories()
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -64,13 +66,19 @@ function AppInner({ user, signOut }) {
   })
   const coachAlertCount = (cats?.budgets || []).filter(b => (spentByCat[b.category] || 0) > b.budget).length
 
+  // Pending users see paywall
+  if (role === 'admin' && subscriptionStatus === 'pending') {
+    return <Paywall user={user} onSignOut={signOut} />
+  }
+
   const shared = { transactions, selectedMonth, onMonthChange: setSelectedMonth, cats }
+  const isSuperadmin = role === 'superadmin'
 
   return (
     <>
       {showOnboarding && <Onboarding onDismiss={dismissOnboarding} />}
       <Routes>
-        <Route element={<Layout user={user} onSignOut={signOut} coachAlertCount={coachAlertCount} />}>
+        <Route element={<Layout user={user} onSignOut={signOut} coachAlertCount={coachAlertCount} isSuperadmin={isSuperadmin} />}>
           <Route path="/"              element={<Dashboard    {...shared} />} />
           <Route path="/transacciones" element={<Transactions {...shared} updateCategory={updateCategory} />} />
           <Route path="/presupuesto"   element={<Presupuesto  {...shared} />} />
@@ -78,7 +86,10 @@ function AppInner({ user, signOut }) {
           <Route path="/subir"         element={<Upload       addTransactions={addTransactions} cats={cats} />} />
           <Route path="/coach"         element={<Coach        {...shared} addTransactions={addTransactions} />} />
           <Route path="/ajustes"       element={<Settings     user={user} onSignOut={signOut} transactions={transactions} />} />
-          <Route path="*"              element={<Navigate to="/" replace />} />
+          {isSuperadmin && (
+            <Route path="/admin" element={<Admin />} />
+          )}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </>
@@ -86,7 +97,7 @@ function AppInner({ user, signOut }) {
 }
 
 export default function App() {
-  const { user, loading, signInWithEmail, signOut } = useAuth()
+  const { user, loading, role, subscriptionStatus, signInWithEmail, signOut } = useAuth()
 
   if (loading) return <LoadingScreen />
 
@@ -99,7 +110,9 @@ export default function App() {
         />
         <Route
           path="/*"
-          element={user ? <AppInner user={user} signOut={signOut} /> : <Navigate to="/login" replace />}
+          element={user
+            ? <AppInner user={user} signOut={signOut} role={role} subscriptionStatus={subscriptionStatus} />
+            : <Navigate to="/login" replace />}
         />
       </Routes>
     </HashRouter>
