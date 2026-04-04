@@ -7,6 +7,7 @@ import Upload from './pages/Upload'
 import Categories from './pages/Categories'
 import Presupuesto from './pages/Presupuesto'
 import Coach from './pages/Coach'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 import Onboarding from './components/ui/Onboarding'
 import { useTransactions } from './hooks/useTransactions'
@@ -52,19 +53,31 @@ function AppInner({ user, signOut }) {
     setShowOnboarding(false)
   }
 
+  // Alert count for Navbar badge
+  const monthTx = transactions.filter(t => {
+    const d = new Date(t.date)
+    return d.getMonth() === selectedMonth.getMonth() && d.getFullYear() === selectedMonth.getFullYear()
+  })
+  const spentByCat = {}
+  monthTx.filter(t => t.amount < 0).forEach(t => {
+    spentByCat[t.category] = (spentByCat[t.category] || 0) + Math.abs(t.amount)
+  })
+  const coachAlertCount = (cats?.budgets || []).filter(b => (spentByCat[b.category] || 0) > b.budget).length
+
   const shared = { transactions, selectedMonth, onMonthChange: setSelectedMonth, cats }
 
   return (
     <>
       {showOnboarding && <Onboarding onDismiss={dismissOnboarding} />}
       <Routes>
-        <Route element={<Layout user={user} onSignOut={signOut} />}>
+        <Route element={<Layout user={user} onSignOut={signOut} coachAlertCount={coachAlertCount} />}>
           <Route path="/"              element={<Dashboard    {...shared} />} />
           <Route path="/transacciones" element={<Transactions {...shared} updateCategory={updateCategory} />} />
           <Route path="/presupuesto"   element={<Presupuesto  {...shared} />} />
           <Route path="/categorias"    element={<Categories   {...shared} />} />
           <Route path="/subir"         element={<Upload       addTransactions={addTransactions} cats={cats} />} />
           <Route path="/coach"         element={<Coach        {...shared} addTransactions={addTransactions} />} />
+          <Route path="/ajustes"       element={<Settings     user={user} onSignOut={signOut} transactions={transactions} />} />
           <Route path="*"              element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

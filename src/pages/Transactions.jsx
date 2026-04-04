@@ -97,7 +97,7 @@ export default function Transactions({ transactions, updateCategory, selectedMon
             {filtered.map(t => (
               <tr key={t.id} className="hover:bg-page/50 transition-colors">
                 <td className="px-4 py-3 text-xs text-muted tabular whitespace-nowrap">
-                  {new Date(t.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: allMonths ? '2-digit' : undefined })}
+                  {new Date(t.date).toLocaleDateString('es-ES', Object.assign({ day: '2-digit', month: 'short' }, allMonths ? { year: '2-digit' } : {}))}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">

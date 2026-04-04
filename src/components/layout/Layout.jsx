@@ -12,7 +12,7 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-export default function Layout({ user, onSignOut }) {
+export default function Layout({ user, onSignOut, coachAlertCount = 0 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -63,6 +63,7 @@ export default function Layout({ user, onSignOut }) {
         sidebarWidth={sidebarWidth}
         user={user}
         onSignOut={onSignOut}
+        coachAlertCount={coachAlertCount}
       />
 
       <main

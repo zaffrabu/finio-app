@@ -56,7 +56,7 @@ function NavItem({ to, label, end, icon, collapsed, onClick }) {
   )
 }
 
-export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose, sidebarWidth, user, onSignOut }) {
+export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose, sidebarWidth, user, onSignOut, coachAlertCount = 0 }) {
   // On mobile: slide in/out via transform. On desktop: always visible.
   const translateClass = isMobile
     ? (mobileOpen ? 'translate-x-0' : '-translate-x-full')
@@ -108,7 +108,7 @@ export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMo
             title={collapsed && !isMobile ? l.label : undefined}
             onClick={handleLinkClick}
             className={({ isActive }) =>
-              `flex items-center ${collapsed && !isMobile ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded text-sm transition-colors ${isActive ? 'font-medium' : 'hover:bg-page'}`
+              `relative flex items-center ${collapsed && !isMobile ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded text-sm transition-colors ${isActive ? 'font-medium' : 'hover:bg-page'}`
             }
             style={({ isActive }) =>
               isActive
@@ -118,17 +118,32 @@ export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMo
           >
             {({ isActive }) => (
               <>
-                <span className="flex-shrink-0" style={{ color: isActive ? '#185FA5' : '#9CA3AF' }}>{l.icon}</span>
+                <span className="relative flex-shrink-0" style={{ color: isActive ? '#185FA5' : '#9CA3AF' }}>
+                  {l.icon}
+                  {collapsed && !isMobile && coachAlertCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-sidebar" />
+                  )}
+                </span>
                 {(!collapsed || isMobile) && (
                   <>
                     <span className="truncate">{l.label}</span>
                     {!isActive && (
-                      <span
-                        className="ml-auto text-2xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: '#E6F1FB', color: '#185FA5' }}
-                      >
-                        IA
-                      </span>
+                      <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                        {coachAlertCount > 0 && (
+                          <span
+                            className="w-4 h-4 rounded-full text-white flex items-center justify-center font-bold flex-shrink-0"
+                            style={{ backgroundColor: '#993C1D', fontSize: '9px' }}
+                          >
+                            {coachAlertCount}
+                          </span>
+                        )}
+                        <span
+                          className="text-2xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: '#E6F1FB', color: '#185FA5' }}
+                        >
+                          IA
+                        </span>
+                      </div>
                     )}
                   </>
                 )}
@@ -138,21 +153,31 @@ export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMo
         ))}
       </nav>
 
-      {/* Footer — user info + logout */}
+      {/* Footer — user info + settings + logout */}
       <div className="border-t border-border/50 flex-shrink-0">
         {(!collapsed || isMobile) ? (
           <div className="px-3 py-3 flex items-center gap-2.5">
-            {/* Avatar */}
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-              style={{ backgroundColor: '#185FA5' }}
+            <NavLink
+              to="/ajustes"
+              onClick={handleLinkClick}
+              title="Ajustes"
+              className="flex items-center gap-2.5 flex-1 min-w-0 rounded hover:bg-page px-1 py-0.5 transition-colors"
             >
-              {user?.email?.[0]?.toUpperCase() ?? 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-primary truncate">{user?.email ?? 'Usuario'}</p>
-              <p className="text-2xs text-muted">Finio personal</p>
-            </div>
+              {({ isActive }) => (
+                <>
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                    style={{ backgroundColor: isActive ? '#0F6E56' : '#185FA5' }}
+                  >
+                    {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-primary truncate">{user?.email ?? 'Usuario'}</p>
+                    <p className="text-2xs text-muted">Ajustes y cuenta</p>
+                  </div>
+                </>
+              )}
+            </NavLink>
             <button
               onClick={onSignOut}
               title="Cerrar sesión"
@@ -166,17 +191,28 @@ export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMo
             </button>
           </div>
         ) : (
-          <button
-            onClick={onSignOut}
-            title="Cerrar sesión"
-            className="w-full flex items-center justify-center py-3 text-muted hover:text-primary hover:bg-page transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
+          <div className="flex flex-col items-center py-2 gap-1">
+            <NavLink
+              to="/ajustes"
+              onClick={handleLinkClick}
+              title="Ajustes"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium transition-colors"
+              style={{ backgroundColor: '#185FA5' }}
+            >
+              {user?.email?.[0]?.toUpperCase() ?? 'U'}
+            </NavLink>
+            <button
+              onClick={onSignOut}
+              title="Cerrar sesión"
+              className="p-1.5 rounded text-muted hover:text-primary hover:bg-page transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
         )}
       </div>
 

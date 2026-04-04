@@ -1,5 +1,41 @@
-import { useState, useRef, useEffect } from 'react'
-import MonthSelector from '../components/ui/MonthSelector'
+import { useState, useRef, useEffect, useCallback } from 'react'
+
+// ── Voice input hook ───────────────────────────────────────────────────────────
+
+function useVoiceInput({ onResult, onError }) {
+  const [listening, setListening] = useState(false)
+  const recRef = useRef(null)
+
+  const supported = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+
+  const start = useCallback(() => {
+    if (!supported || listening) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const rec = new SR()
+    rec.lang = 'es-ES'
+    rec.interimResults = false
+    rec.maxAlternatives = 1
+
+    rec.onstart  = () => setListening(true)
+    rec.onend    = () => setListening(false)
+    rec.onerror  = (e) => { setListening(false); onError?.(e.error) }
+    rec.onresult = (e) => {
+      const text = e.results[0][0].transcript
+      onResult(text)
+    }
+
+    recRef.current = rec
+    rec.start()
+  }, [supported, listening, onResult, onError])
+
+  const stop = useCallback(() => {
+    recRef.current?.stop()
+    setListening(false)
+  }, [])
+
+  return { listening, supported, start, stop }
+}
 
 function fmt(n) {
   return n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
@@ -10,6 +46,103 @@ function filterByMonth(transactions, month) {
     const d = new Date(tx.date)
     return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear()
   })
+}
+
+// ── Proactive alerts ───────────────────────────────────────────────────────────
+
+function generateAlerts(txs, cats, selectedMonth) {
+  const alerts = []
+  const spentByCat = {}
+  txs.filter(t => t.amount < 0).forEach(t => {
+    spentByCat[t.category] = (spentByCat[t.category] || 0) + Math.abs(t.amount)
+  })
+  const income       = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
+  const totalExpense = txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+
+  // Budget alerts
+  ;(cats?.budgets || []).forEach(b => {
+    const spent = spentByCat[b.category] || 0
+    const pct   = b.budget > 0 ? (spent / b.budget) * 100 : 0
+    if (pct >= 100) {
+      alerts.push({
+        id: `budget-over-${b.category}`,
+        severity: 'alert',
+        title: `Presupuesto superado: ${b.category}`,
+        message: `Has gastado ${fmt(spent)} de ${fmt(b.budget)} (${pct.toFixed(0)}%)`,
+        prompt: `He superado el presupuesto de ${b.category}. ¿Qué debo hacer para controlar el gasto restante?`,
+      })
+    } else if (pct >= 80) {
+      alerts.push({
+        id: `budget-warn-${b.category}`,
+        severity: 'warning',
+        title: `Presupuesto al ${pct.toFixed(0)}%: ${b.category}`,
+        message: `Te quedan ${fmt(b.budget - spent)} de ${fmt(b.budget)} — úsalos bien`,
+        prompt: `Estoy al ${pct.toFixed(0)}% del presupuesto de ${b.category}. ¿Cómo evito superarlo esta semana?`,
+      })
+    }
+  })
+
+  // Negative monthly projection (current month only)
+  const now = new Date()
+  const isCurrentMonth = selectedMonth.getMonth() === now.getMonth() && selectedMonth.getFullYear() === now.getFullYear()
+  if (isCurrentMonth && income > 0) {
+    const daysInMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate()
+    const dailyRate   = totalExpense / (now.getDate() || 1)
+    const projected   = income - (dailyRate * daysInMonth)
+    if (projected < 0) {
+      alerts.push({
+        id: 'projection-negative',
+        severity: 'alert',
+        title: 'Proyección negativa este mes',
+        message: `Al ritmo actual acabarías el mes con ${fmt(Math.round(projected))}`,
+        prompt: 'Mi proyección de fin de mes es negativa. ¿Qué debo recortar urgentemente para equilibrar?',
+      })
+    }
+  }
+
+  // Low savings rate
+  const saving     = txs.filter(t => t.tipo === 'Ahorro').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const savingRate = income > 0 ? (saving / income) * 100 : 0
+  if (income > 0 && savingRate < 10) {
+    alerts.push({
+      id: 'low-savings',
+      severity: 'warning',
+      title: 'Tasa de ahorro por debajo del 10%',
+      message: `Ahorras el ${savingRate.toFixed(1)}% — el objetivo mínimo recomendado es 20%`,
+      prompt: 'Mi tasa de ahorro es muy baja. Dame un plan concreto con importes para llegar al 20%.',
+    })
+  }
+
+  return alerts
+}
+
+function ProactiveAlertCard({ alert, onDismiss, onAskCoach }) {
+  const c = alert.severity === 'alert'
+    ? { bg: '#FAECE7', border: '#F8A88C', title: '#993C1D', msg: '#7B2D14' }
+    : { bg: '#FAEEDA', border: '#F5C96B', title: '#854F0B', msg: '#6B3E08' }
+
+  return (
+    <div className="flex items-start gap-3 rounded-lg px-4 py-3 border" style={{ backgroundColor: c.bg, borderColor: c.border }}>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold" style={{ color: c.title }}>{alert.title}</p>
+        <p className="text-xs mt-0.5" style={{ color: c.msg }}>{alert.message}</p>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={onAskCoach}
+          className="text-xs font-medium px-2.5 py-1 rounded-md text-white transition-colors"
+          style={{ backgroundColor: '#185FA5' }}
+        >
+          Preguntar
+        </button>
+        <button onClick={onDismiss} className="text-muted hover:text-primary transition-colors" title="Descartar alerta">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── Context builder ────────────────────────────────────────────────────────────
@@ -314,13 +447,54 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [registerMode, setRegisterMode] = useState(false)
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('finio_dismissed_alerts') || '[]') } catch { return [] }
+  })
+  const [voiceError, setVoiceError] = useState(null)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
+
+  const { listening, supported: voiceSupported, start: startVoice, stop: stopVoice } = useVoiceInput({
+    onResult: (text) => {
+      setInput(prev => (prev ? prev + ' ' + text : text))
+      setVoiceError(null)
+      inputRef.current?.focus()
+    },
+    onError: (err) => {
+      setVoiceError(err === 'not-allowed' ? 'Permiso de micrófono denegado' : 'Error al escuchar')
+    },
+  })
 
   useEffect(() => { setMessages([]) }, [selectedMonth])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const tx = filterByMonth(transactions, selectedMonth)
+
+  // Proactive alerts
+  const allAlerts    = generateAlerts(tx, cats, selectedMonth)
+  const visibleAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id))
+
+  function dismissAlert(id) {
+    const next = [...dismissedAlerts, id]
+    setDismissedAlerts(next)
+    localStorage.setItem('finio_dismissed_alerts', JSON.stringify(next))
+  }
+
+  // Auto-analysis once per month on first visit with data
+  const autoAnalyzeKey = `finio_coach_analyzed_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`
+  useEffect(() => {
+    const now = new Date()
+    const isCurrentMonth = selectedMonth.getMonth() === now.getMonth() && selectedMonth.getFullYear() === now.getFullYear()
+    if (!isCurrentMonth) return
+    const done = localStorage.getItem(autoAnalyzeKey)
+    if (!done && tx.length > 0) {
+      localStorage.setItem(autoAnalyzeKey, '1')
+      const timer = setTimeout(() => {
+        send('Analiza mi situación financiera este mes y dame un resumen ejecutivo en 3-4 puntos clave.')
+      }, 900)
+      return () => clearTimeout(timer)
+    }
+  }, []) // run once on mount
 
   const income       = tx.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
   const totalAhorro  = tx.filter(t => t.tipo === 'Ahorro').reduce((s, t) => s + Math.abs(t.amount), 0)
@@ -496,6 +670,20 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
         </div>
       </div>
 
+      {/* Proactive alerts */}
+      {visibleAlerts.length > 0 && (
+        <div className="space-y-2">
+          {visibleAlerts.map(alert => (
+            <ProactiveAlertCard
+              key={alert.id}
+              alert={alert}
+              onDismiss={() => dismissAlert(alert.id)}
+              onAskCoach={() => { dismissAlert(alert.id); send(alert.prompt) }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Insight cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InsightCard
@@ -595,17 +783,46 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
 
         {/* Input */}
         <div className="px-5 pb-4">
+          {voiceError && (
+            <p className="text-xs mb-2 px-1" style={{ color: '#993C1D' }}>{voiceError}</p>
+          )}
           <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
-              placeholder={registerMode ? 'Ej: Pagué 45€ en Mercadona hoy...' : 'Escribe tu pregunta...'}
-              disabled={loading}
-              className="flex-1 text-sm border border-border rounded-sm px-3 py-2 bg-white focus:outline-none focus:border-tri-300 transition-colors disabled:opacity-50"
-            />
+            <div className="relative flex-1">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+                placeholder={listening ? 'Escuchando...' : registerMode ? 'Ej: Pagué 45€ en Mercadona hoy...' : 'Escribe tu pregunta...'}
+                disabled={loading}
+                className="w-full text-sm border border-border rounded-sm px-3 py-2 pr-10 bg-white focus:outline-none focus:border-tri-300 transition-colors disabled:opacity-50"
+                style={listening ? { borderColor: '#F87171' } : undefined}
+              />
+              {voiceSupported && (
+                <button
+                  type="button"
+                  onClick={listening ? stopVoice : startVoice}
+                  disabled={loading}
+                  title={listening ? 'Detener' : 'Hablar'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
+                  style={listening
+                    ? { backgroundColor: '#FEE2E2', color: '#EF4444' }
+                    : { backgroundColor: 'transparent', color: '#9CA3AF' }}
+                >
+                  {listening ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                      <line x1="12" y1="19" x2="12" y2="23"/>
+                      <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
             <button
               onClick={() => send(input)}
               disabled={loading || !input.trim()}
