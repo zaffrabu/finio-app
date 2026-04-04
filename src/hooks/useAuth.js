@@ -17,6 +17,9 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Safety: never stay loading more than 6 seconds
+    const timeout = setTimeout(() => setLoading(false), 6000)
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null
       setUser(u)
@@ -26,6 +29,7 @@ export function useAuth() {
       } catch {
         setProfile(null)
       } finally {
+        clearTimeout(timeout)
         setLoading(false)
       }
     })
