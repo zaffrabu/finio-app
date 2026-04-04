@@ -1,7 +1,6 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { weeklyData } from '../../data/sampleData'
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -35,7 +34,34 @@ function CustomLegend({ payload }) {
   )
 }
 
-export default function WeeklyChart() {
+export default function WeeklyChart({ transactions = [], selectedMonth }) {
+  const month = selectedMonth || new Date()
+  const year  = month.getFullYear()
+  const mon   = month.getMonth()
+  const daysInMonth = new Date(year, mon + 1, 0).getDate()
+
+  const weeks = [
+    { week: 'Sem 1', from: 1,  to: 7  },
+    { week: 'Sem 2', from: 8,  to: 14 },
+    { week: 'Sem 3', from: 15, to: 21 },
+    { week: 'Sem 4', from: 22, to: daysInMonth },
+  ]
+
+  const weeklyData = weeks.map(({ week, from, to }) => {
+    const weekTx = transactions.filter(t => {
+      const d = new Date(t.date)
+      if (d.getMonth() !== mon || d.getFullYear() !== year) return false
+      const day = d.getDate()
+      return day >= from && day <= to
+    })
+    return {
+      week,
+      ingresos: weekTx.filter(t => t.amount > 0 && t.tipo !== 'Ahorro').reduce((s, t) => s + t.amount, 0),
+      gastos:   weekTx.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0),
+      ahorro:   weekTx.filter(t => t.tipo === 'Ahorro').reduce((s, t) => s + Math.abs(t.amount), 0),
+    }
+  })
+
   return (
     <div className="bg-card rounded-lg border border-border shadow-card px-5 py-5">
       <p className="text-sm font-medium text-primary mb-4">Flujo semanal</p>

@@ -45,7 +45,7 @@ export default function Presupuesto({ transactions, selectedMonth, onMonthChange
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card rounded-lg border border-border shadow-card px-5 py-4">
           <p className="text-xs text-muted mb-1.5">Presupuestado</p>
           <p className="text-2xl font-medium text-primary tabular">{fmt(totalBudget)}</p>
@@ -81,9 +81,10 @@ export default function Presupuesto({ transactions, selectedMonth, onMonthChange
         </div>
       </div>
 
-      {/* Category list */}
+      {/* Category list — table on md+, cards on mobile */}
       <div className="bg-card rounded-lg border border-border shadow-card divide-y divide-border/40">
-        <div className="px-5 py-3 grid grid-cols-12 text-xs font-medium text-muted">
+        {/* Desktop header */}
+        <div className="hidden md:grid px-5 py-3 grid-cols-12 text-xs font-medium text-muted">
           <span className="col-span-4">Categoría</span>
           <span className="col-span-4">Progreso</span>
           <span className="col-span-2 text-right">Gastado</span>
@@ -92,34 +93,46 @@ export default function Presupuesto({ transactions, selectedMonth, onMonthChange
         {items.map(({ category, spent, budget, left, pct, over, tipo }) => {
           const style = TIPO_STYLES[tipo] || TIPO_STYLES.Variable
           return (
-            <div key={category} className="px-5 py-4 grid grid-cols-12 items-center gap-2 hover:bg-tri-50/30 transition-colors">
-              <div className="col-span-4 flex items-center gap-2">
-                <span className={`text-2xs font-medium px-1.5 py-0.5 rounded ${style.badge}`}>
-                  {tipo}
-                </span>
-                <span className="text-sm text-primary truncate">{category}</span>
-              </div>
-              <div className="col-span-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-page rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: over ? '#DC2626' : style.bar }}
-                    />
+            <div key={category} className="px-4 py-3 md:px-5 md:py-4 hover:bg-tri-50/30 transition-colors">
+              {/* Desktop row */}
+              <div className="hidden md:grid grid-cols-12 items-center gap-2">
+                <div className="col-span-4 flex items-center gap-2">
+                  <span className={`text-2xs font-medium px-1.5 py-0.5 rounded ${style.badge}`}>{tipo}</span>
+                  <span className="text-sm text-primary truncate">{category}</span>
+                </div>
+                <div className="col-span-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-page rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: over ? '#DC2626' : style.bar }} />
+                    </div>
+                    <span className={`text-2xs tabular w-8 text-right ${over ? 'text-expense-text font-medium' : 'text-muted'}`}>{Math.round(pct)}%</span>
                   </div>
-                  <span className={`text-2xs tabular w-8 text-right ${over ? 'text-expense-text font-medium' : 'text-muted'}`}>
-                    {Math.round(pct)}%
-                  </span>
+                </div>
+                <div className="col-span-2 text-right">
+                  <span className="text-sm text-primary tabular">{fmt(spent)}</span>
+                  <span className="text-xs text-muted block">de {fmt(budget)}</span>
+                </div>
+                <div className="col-span-2 text-right">
+                  <span className={`text-sm font-medium tabular ${left < 0 ? 'text-expense-text' : 'text-income-text'}`}>{fmt(left)}</span>
                 </div>
               </div>
-              <div className="col-span-2 text-right">
-                <span className="text-sm text-primary tabular">{fmt(spent)}</span>
-                <span className="text-xs text-muted block">de {fmt(budget)}</span>
-              </div>
-              <div className="col-span-2 text-right">
-                <span className={`text-sm font-medium tabular ${left < 0 ? 'text-expense-text' : 'text-income-text'}`}>
-                  {fmt(left)}
-                </span>
+              {/* Mobile card */}
+              <div className="md:hidden space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${style.badge}`}>{tipo}</span>
+                    <span className="text-sm font-medium text-primary truncate">{category}</span>
+                  </div>
+                  <span className={`text-sm font-medium tabular ml-2 flex-shrink-0 ${left < 0 ? 'text-expense-text' : 'text-income-text'}`}>{fmt(left)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-page rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: over ? '#DC2626' : style.bar }} />
+                  </div>
+                  <span className={`text-2xs tabular w-16 text-right flex-shrink-0 ${over ? 'text-expense-text font-medium' : 'text-muted'}`}>
+                    {fmt(spent)} / {Math.round(pct)}%
+                  </span>
+                </div>
               </div>
             </div>
           )

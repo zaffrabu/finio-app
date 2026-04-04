@@ -3,6 +3,7 @@ import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import AmountBadge from '../components/ui/AmountBadge'
 import CategorySelect from '../components/ui/CategorySelect'
+import { autoCategory } from '../data/categorizationRules'
 
 function detectColumn(headers, candidates) {
   for (const c of candidates) {
@@ -56,14 +57,27 @@ function processRows(data, headers, setRows, setImported, setError) {
   const descCol   = detectColumn(headers, ['descripcion', 'concepto', 'description', 'movimiento', 'concept'])
   const amountCol = detectColumn(headers, ['importe', 'amount', 'cargo', 'abono', 'saldo'])
 
+  // Load learned rules from localStorage
+  let learnedRules = []
+  try { learnedRules = JSON.parse(localStorage.getItem('finio_learned_rules') || '[]') } catch {}
+
   const parsed = data.map(row => {
     const amount = parseAmount(row[amountCol])
+    const description = String(row[descCol] || '').trim()
+
+    // 1. Check learned rules first (exact-ish user corrections)
+    const descLower = description.toLowerCase()
+    const learned = learnedRules.find(r => r.match && descLower.includes(r.match))
+
+    // 2. Fall back to built-in rules
+    const auto = learned || autoCategory(description, amount)
+
     return {
       date:        formatDate(row[dateCol]),
-      description: String(row[descCol] || '').trim(),
+      description,
       amount,
-      category:    '',
-      tipo:        amount >= 0 ? 'Ingreso' : 'Variable',
+      category:    auto?.category || '',
+      tipo:        auto?.tipo     || (amount >= 0 ? 'Ingreso' : 'Variable'),
       account:     'BBVA',
     }
   }).filter(r => !isNaN(r.amount) && r.amount !== 0)
@@ -101,7 +115,21 @@ export default function Upload({ addTransactions }) {
         try {
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true })
           const ws = wb.Sheets[wb.SheetNames[0]]
-          const data = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+          // Auto-detect the header row: scan up to row 10 looking for
+          // a row that contains known bank column keywords.
+          const KNOWN_HEADERS = ['fecha', 'concepto', 'importe', 'movimiento', 'description', 'amount', 'date']
+          let headerRow = 0
+          for (let r = 0; r <= 10; r++) {
+            const probe = XLSX.utils.sheet_to_json(ws, { defval: '', range: r, header: 1 })
+            if (probe.length > 0) {
+              const firstRow = probe[0].map(c => String(c).toLowerCase())
+              const matches  = firstRow.filter(c => KNOWN_HEADERS.some(k => c.includes(k)))
+              if (matches.length >= 2) { headerRow = r; break }
+            }
+          }
+
+          const data    = XLSX.utils.sheet_to_json(ws, { defval: '', range: headerRow })
           const headers = data.length ? Object.keys(data[0]) : []
           processRows(data, headers, setRows, setImported, setError)
         } catch {
@@ -121,7 +149,28 @@ export default function Upload({ addTransactions }) {
   }
 
   function onCategoryChange(idx, cat) {
+    const row = rows[idx]
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, category: cat } : r))
+
+    // Learn: save this manual assignment for future uploads
+    if (cat && row.description) {
+      const key = row.description
+        .toLowerCase()
+        .replace(/[^a-záéíóúüñ0-9\s]/gi, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2)
+        .slice(0, 3)
+        .join(' ')
+        .trim()
+      if (key) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('finio_learned_rules') || '[]')
+          const filtered = stored.filter(r => r.match !== key)
+          filtered.unshift({ match: key, category: cat, tipo: row.tipo })
+          localStorage.setItem('finio_learned_rules', JSON.stringify(filtered.slice(0, 200)))
+        } catch {}
+      }
+    }
   }
 
   function confirmImport() {
@@ -130,8 +179,10 @@ export default function Upload({ addTransactions }) {
     setRows([])
   }
 
-  const totalPositive = rows.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0)
-  const totalNegative = rows.filter(r => r.amount < 0).reduce((s, r) => s + r.amount, 0)
+  const totalPositive  = rows.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0)
+  const totalNegative  = rows.filter(r => r.amount < 0).reduce((s, r) => s + r.amount, 0)
+  const autoCategorized = rows.filter(r => r.category).length
+  const needsReview     = rows.filter(r => !r.category).length
 
   return (
     <div className="space-y-6">
@@ -194,41 +245,66 @@ export default function Upload({ addTransactions }) {
 
       {rows.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-card rounded-lg border border-border shadow-card px-5 py-4">
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs text-muted">Filas detectadas</p>
-                <p className="text-lg font-medium text-primary">{rows.length}</p>
+          {/* Summary bar */}
+          <div className="bg-card rounded-lg border border-border shadow-card px-5 py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="text-xs text-muted">Filas detectadas</p>
+                  <p className="text-lg font-medium text-primary">{rows.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Ingresos</p>
+                  <p className="text-lg font-medium text-income-text tabular">
+                    +{totalPositive.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Gastos</p>
+                  <p className="text-lg font-medium text-expense-text tabular">
+                    {totalNegative.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted">Ingresos</p>
-                <p className="text-lg font-medium text-income-text tabular">
-                  +{totalPositive.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted">Gastos</p>
-                <p className="text-lg font-medium text-expense-text tabular">
-                  {totalNegative.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setRows([])}
+                  className="text-sm text-muted hover:text-secondary px-3 py-2 rounded transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmImport}
+                  className="bg-tri-600 text-white text-sm font-medium px-4 py-2 rounded-sm hover:bg-tri-700 transition-colors"
+                >
+                  Confirmar importación
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setRows([])}
-                className="text-sm text-muted hover:text-secondary px-3 py-2 rounded transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmImport}
-                className="bg-tri-600 text-white text-sm font-medium px-4 py-2 rounded-sm hover:bg-tri-700 transition-colors"
-              >
-                Confirmar importación
-              </button>
+
+            {/* Auto-categorization stats */}
+            <div className="flex items-center gap-3 pt-1 border-t border-border/50">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-income-text flex-shrink-0" />
+                <span className="text-xs text-muted">
+                  <span className="font-medium text-primary">{autoCategorized}</span> categorizadas automáticamente
+                </span>
+              </div>
+              {needsReview > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-saving-text flex-shrink-0" />
+                  <span className="text-xs text-muted">
+                    <span className="font-medium text-primary">{needsReview}</span> pendientes de revisar
+                  </span>
+                </div>
+              )}
+              <span className="text-xs text-muted ml-auto">
+                Las correcciones manuales se aprenden para la próxima importación
+              </span>
             </div>
           </div>
 
+          {/* Table */}
           <div className="bg-card rounded-lg border border-border shadow-card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -241,9 +317,16 @@ export default function Upload({ addTransactions }) {
               </thead>
               <tbody className="divide-y divide-border/40">
                 {rows.map((r, i) => (
-                  <tr key={i} className="hover:bg-tri-50/30">
+                  <tr key={i} className={`hover:bg-tri-50/30 ${!r.category ? 'bg-saving-bg/20' : ''}`}>
                     <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{r.date}</td>
-                    <td className="px-4 py-3 text-primary">{r.description}</td>
+                    <td className="px-4 py-3 text-primary">
+                      <span>{r.description}</span>
+                      {!r.category && (
+                        <span className="ml-2 text-2xs font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#FAEEDA', color: '#854F0B' }}>
+                          revisar
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <CategorySelect value={r.category} onChange={cat => onCategoryChange(i, cat)} />
                     </td>

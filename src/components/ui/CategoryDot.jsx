@@ -12,6 +12,7 @@ export const CATEGORY_COLORS = {
   'Ahorro':                  '#854F0B',
   'Envíos familia':          '#6a35de',
   'Lujo / Compras':          '#c555eb',
+  'Inversión negocio / licencia': '#0ea5e9',
   'Sueldo':                  '#0F6E56',
   'Cuidado canino':          '#2599af',
   'Otros':                   '#9CA3AF',

@@ -30,12 +30,13 @@ const aiLinks = [
   },
 ]
 
-function NavItem({ to, label, end, icon, collapsed }) {
+function NavItem({ to, label, end, icon, collapsed, onClick }) {
   return (
     <NavLink
       to={to}
       end={end}
       title={collapsed ? label : undefined}
+      onClick={onClick}
       className={({ isActive }) =>
         `flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded text-sm transition-colors ${isActive ? 'font-medium' : 'hover:bg-page'}`
       }
@@ -55,22 +56,29 @@ function NavItem({ to, label, end, icon, collapsed }) {
   )
 }
 
-export default function Navbar({ collapsed, onToggle }) {
+export default function Navbar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose, sidebarWidth }) {
+  // On mobile: slide in/out via transform. On desktop: always visible.
+  const translateClass = isMobile
+    ? (mobileOpen ? 'translate-x-0' : '-translate-x-full')
+    : 'translate-x-0'
+
+  const handleLinkClick = () => { if (isMobile) onMobileClose() }
+
   return (
     <aside
-      className="fixed top-0 left-0 h-screen bg-sidebar border-r border-border flex flex-col z-40 overflow-hidden transition-all duration-200"
-      style={{ width: collapsed ? 56 : 208 }}
+      className={`fixed top-0 left-0 h-screen bg-sidebar border-r border-border flex flex-col z-40 overflow-hidden transition-all duration-200 ${translateClass}`}
+      style={{ width: sidebarWidth }}
     >
       {/* Brand */}
       <div className="px-3 pt-6 pb-5 border-b border-border/50 flex-shrink-0">
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}>
+        <div className={`flex items-center ${collapsed && !isMobile ? 'justify-center' : 'gap-2.5'}`}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0"
             style={{ backgroundColor: '#185FA5' }}
           >
             <span className="text-white font-bold text-sm leading-none" style={{ fontFamily: 'Georgia, serif' }}>F</span>
           </div>
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <div className="overflow-hidden">
               <span className="font-medium text-sm tracking-tight whitespace-nowrap" style={{ color: '#042C53' }}>Finio</span>
               <p className="text-2xs text-muted leading-none mt-0.5 whitespace-nowrap">Finanzas personales</p>
@@ -81,11 +89,12 @@ export default function Navbar({ collapsed, onToggle }) {
 
       {/* Main nav */}
       <nav className="flex-1 px-2 pt-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {mainLinks.map(l => <NavItem key={l.to} {...l} collapsed={collapsed} />)}
+        {mainLinks.map(l => (
+          <NavItem key={l.to} {...l} collapsed={collapsed && !isMobile} onClick={handleLinkClick} />
+        ))}
 
-        {/* Divider — sección Inteligencia */}
         <div className="pt-3 pb-1">
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <p className="px-3 text-2xs font-medium text-muted uppercase tracking-widest whitespace-nowrap">Inteligencia</p>
           )}
         </div>
@@ -96,9 +105,10 @@ export default function Navbar({ collapsed, onToggle }) {
             key={l.to}
             to={l.to}
             end={l.end}
-            title={collapsed ? l.label : undefined}
+            title={collapsed && !isMobile ? l.label : undefined}
+            onClick={handleLinkClick}
             className={({ isActive }) =>
-              `flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded text-sm transition-colors ${isActive ? 'font-medium' : 'hover:bg-page'}`
+              `flex items-center ${collapsed && !isMobile ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded text-sm transition-colors ${isActive ? 'font-medium' : 'hover:bg-page'}`
             }
             style={({ isActive }) =>
               isActive
@@ -109,7 +119,7 @@ export default function Navbar({ collapsed, onToggle }) {
             {({ isActive }) => (
               <>
                 <span className="flex-shrink-0" style={{ color: isActive ? '#185FA5' : '#9CA3AF' }}>{l.icon}</span>
-                {!collapsed && (
+                {(!collapsed || isMobile) && (
                   <>
                     <span className="truncate">{l.label}</span>
                     {!isActive && (
@@ -129,25 +139,27 @@ export default function Navbar({ collapsed, onToggle }) {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
+      {(!collapsed || isMobile) && (
         <div className="px-5 py-4 border-t border-border/50 flex-shrink-0">
-          <p className="text-2xs text-muted whitespace-nowrap">Finio · Marzo 2026</p>
+          <p className="text-2xs text-muted whitespace-nowrap">Finio · {new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</p>
         </div>
       )}
 
-      {/* Toggle button — sits on the right border, vertically centered */}
-      <button
-        onClick={onToggle}
-        className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 w-5 h-5 rounded-full bg-card border border-border shadow-sm flex items-center justify-center hover:bg-page transition-colors z-50"
-        style={{ color: '#9CA3AF' }}
-        aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-      >
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          {collapsed
-            ? <polyline points="9 18 15 12 9 6" />
-            : <polyline points="15 18 9 12 15 6" />}
-        </svg>
-      </button>
+      {/* Desktop collapse toggle — hidden on mobile */}
+      {!isMobile && (
+        <button
+          onClick={onToggle}
+          className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 w-5 h-5 rounded-full bg-card border border-border shadow-sm flex items-center justify-center hover:bg-page transition-colors z-50"
+          style={{ color: '#9CA3AF' }}
+          aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+        >
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            {collapsed
+              ? <polyline points="9 18 15 12 9 6" />
+              : <polyline points="15 18 9 12 15 6" />}
+          </svg>
+        </button>
+      )}
     </aside>
   )
 }

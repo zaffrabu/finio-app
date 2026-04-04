@@ -2,7 +2,7 @@ import StatCard from '../components/dashboard/StatCard'
 import WeeklyChart from '../components/dashboard/WeeklyChart'
 import RecentTransactions from '../components/dashboard/RecentTransactions'
 import MonthSelector from '../components/ui/MonthSelector'
-import { BUDGETS } from '../data/sampleData'
+import { BUDGETS as DEFAULT_BUDGETS } from '../data/sampleData'
 
 function fmt(n) {
   return n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
@@ -15,7 +15,7 @@ function filterByMonth(transactions, month) {
   })
 }
 
-export default function Dashboard({ transactions, selectedMonth, onMonthChange }) {
+export default function Dashboard({ transactions, selectedMonth, onMonthChange, cats }) {
   const tx = filterByMonth(transactions, selectedMonth)
 
   const totalIngresos = tx.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
@@ -35,6 +35,7 @@ export default function Dashboard({ transactions, selectedMonth, onMonthChange }
   tx.filter(t => t.amount < 0).forEach(t => {
     spentByCategory[t.category] = (spentByCategory[t.category] || 0) + Math.abs(t.amount)
   })
+  const BUDGETS = cats?.budgets || DEFAULT_BUDGETS
   const budgetStatus = BUDGETS.map(b => ({
     ...b,
     spent: spentByCategory[b.category] || 0,
@@ -50,7 +51,7 @@ export default function Dashboard({ transactions, selectedMonth, onMonthChange }
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <StatCard
           label="Saldo neto"
           value={fmt(saldo)}
@@ -78,11 +79,11 @@ export default function Dashboard({ transactions, selectedMonth, onMonthChange }
       </div>
 
       {/* Chart + Budget */}
-      <div className="grid grid-cols-5 gap-4">
-        <div className="col-span-3">
-          <WeeklyChart />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3">
+          <WeeklyChart transactions={tx} selectedMonth={selectedMonth} />
         </div>
-        <div className="col-span-2 bg-card rounded-lg border border-border shadow-card px-5 py-5">
+        <div className="lg:col-span-2 bg-card rounded-lg border border-border shadow-card px-5 py-5">
           <p className="text-sm font-medium text-primary mb-4">Top presupuestos</p>
           <div className="space-y-4">
             {budgetStatus.map(({ category, spent, budget, pct, over }) => (
@@ -119,7 +120,7 @@ export default function Dashboard({ transactions, selectedMonth, onMonthChange }
       </div>
 
       {/* Income + debt strip */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card rounded-lg border border-border shadow-card px-5 py-4">
           <p className="text-xs text-muted mb-1">Sueldo Acceleralia</p>
           <p className="text-xl font-medium tabular" style={{ color: '#0F6E56' }}>{fmt(sueldo)}</p>

@@ -11,6 +11,7 @@ export const CATEGORIES = [
   'Ahorro',
   'Envíos familia',
   'Lujo / Compras',
+  'Inversión negocio / licencia',
   'Sueldo',
   'Cuidado canino',
   'Otros',
@@ -19,16 +20,17 @@ export const CATEGORIES = [
 export const TIPOS = ['Fijo', 'Variable', 'Ingreso', 'Ahorro', 'Deuda', 'Neutro']
 
 export const BUDGETS = [
-  { category: 'Vivienda',                budget: 700,  tipo: 'Fijo'     },
-  { category: 'Supermercado',            budget: 200,  tipo: 'Variable' },
-  { category: 'Comida fuera y delivery', budget: 80,   tipo: 'Variable' },
-  { category: 'Ocio',                    budget: 80,   tipo: 'Variable' },
-  { category: 'Transporte',              budget: 50,   tipo: 'Fijo'     },
-  { category: 'Seguros y salud',         budget: 85,   tipo: 'Variable' },
-  { category: 'Belleza',                 budget: 50,   tipo: 'Variable' },
-  { category: 'Mascotas',               budget: 120,  tipo: 'Variable' },
-  { category: 'Deudas',                  budget: 165,  tipo: 'Deuda'    },
-  { category: 'Envíos familia',          budget: 150,  tipo: 'Variable' },
+  { category: 'Vivienda',                        budget: 700,   tipo: 'Fijo'     },
+  { category: 'Supermercado',                    budget: 200,   tipo: 'Variable' },
+  { category: 'Comida fuera y delivery',         budget: 80,    tipo: 'Variable' },
+  { category: 'Ocio',                            budget: 80,    tipo: 'Variable' },
+  { category: 'Transporte',                      budget: 50,    tipo: 'Fijo'     },
+  { category: 'Seguros y salud',                 budget: 85,    tipo: 'Variable' },
+  { category: 'Belleza',                         budget: 50,    tipo: 'Variable' },
+  { category: 'Mascotas',                        budget: 120,   tipo: 'Variable' },
+  { category: 'Deudas',                          budget: 165,   tipo: 'Deuda'    },
+  { category: 'Envíos familia',                  budget: 150,   tipo: 'Variable' },
+  { category: 'Inversión negocio / licencia',    budget: 22,    tipo: 'Fijo'     },
 ]
 
 export const ACCOUNTS = ['BBVA', 'Wise', 'Trade bank', 'Efectivo', 'Sabadell']
