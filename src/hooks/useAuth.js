@@ -3,12 +3,9 @@ import { supabase } from '../lib/supabase'
 
 async function fetchProfile(userId) {
   if (!userId) return null
-  const { data } = await supabase
-    .from('finio_profiles')
-    .select('role, subscription_status')
-    .eq('id', userId)
-    .single()
-  return data || null
+  // Use RPC to bypass RLS — returns [{role, subscription_status}] for current user
+  const { data } = await supabase.rpc('finio_get_my_profile')
+  return data?.[0] || null
 }
 
 export function useAuth() {
