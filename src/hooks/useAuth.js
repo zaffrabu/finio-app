@@ -20,16 +20,25 @@ export function useAuth() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null
       setUser(u)
-      const p = await fetchProfile(u?.id)
-      setProfile(p)
-      setLoading(false)
+      try {
+        const p = await fetchProfile(u?.id)
+        setProfile(p)
+      } catch {
+        setProfile(null)
+      } finally {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
       const u = session?.user ?? null
       setUser(u)
-      const p = await fetchProfile(u?.id)
-      setProfile(p)
+      try {
+        const p = await fetchProfile(u?.id)
+        setProfile(p)
+      } catch {
+        setProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()

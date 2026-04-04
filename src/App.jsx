@@ -66,6 +66,11 @@ function AppInner({ user, signOut, role, subscriptionStatus }) {
   })
   const coachAlertCount = (cats?.budgets || []).filter(b => (spentByCat[b.category] || 0) > b.budget).length
 
+  // Profile still loading or not created yet → paywall
+  if (role === null) {
+    return <Paywall user={user} onSignOut={signOut} />
+  }
+
   // Pending users see paywall
   if (role === 'admin' && subscriptionStatus === 'pending') {
     return <Paywall user={user} onSignOut={signOut} />
