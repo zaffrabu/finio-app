@@ -22,7 +22,7 @@ export function useAuth() {
       setUser(u)
       if (u) {
         const p = await fetchProfile()
-        setProfile(p)
+        setProfile(prev => p ?? prev)
       } else {
         setProfile(null)
       }
