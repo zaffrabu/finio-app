@@ -75,7 +75,7 @@ export default function Settings({ user, onSignOut, transactions }) {
         </div>
         <Row
           label="Acceso"
-          detail="Finio usa magic link — sin contraseña. Recibes un enlace en tu correo para entrar."
+          detail="Acceso con correo y contraseña. Puedes cambiar tu contraseña desde el correo de recuperación."
         />
       </Section>
 
