@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
     base: '/finio-app/',
     plugins: [react()],
     server: {
+      port: 5174,
       proxy: {
         '/api/claude': {
           target: 'https://api.anthropic.com',

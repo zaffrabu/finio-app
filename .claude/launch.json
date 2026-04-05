@@ -5,7 +5,7 @@
       "name": "Vite Dev Server",
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": ["/Users/zaffraburga/finanzas-app/.claude/start-dev.sh"],
-      "port": 5173
+      "port": 5174
     }
   ]
 }
