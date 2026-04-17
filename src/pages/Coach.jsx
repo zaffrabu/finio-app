@@ -117,29 +117,52 @@ function generateAlerts(txs, cats, selectedMonth) {
 }
 
 function ProactiveAlertCard({ alert, onDismiss, onAskCoach }) {
-  const c = alert.severity === 'alert'
-    ? { bg: '#FAECE7', border: '#F8A88C', title: '#993C1D', msg: '#7B2D14' }
-    : { bg: '#FAEEDA', border: '#F5C96B', title: '#854F0B', msg: '#6B3E08' }
-
+  const isAlert = alert.severity === 'alert'
+  
   return (
-    <div className="flex items-start gap-3 rounded-lg px-4 py-3 border" style={{ backgroundColor: c.bg, borderColor: c.border }}>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold" style={{ color: c.title }}>{alert.title}</p>
-        <p className="text-xs mt-0.5" style={{ color: c.msg }}>{alert.message}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={onAskCoach}
-          className="text-xs font-medium px-2.5 py-1 rounded-md text-white transition-colors"
-          style={{ backgroundColor: '#185FA5' }}
-        >
-          Preguntar
-        </button>
-        <button onClick={onDismiss} className="text-muted hover:text-primary transition-colors" title="Descartar alerta">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+    <div className={`relative overflow-hidden group mb-4 rounded-2xl border transition-all duration-300 hover:shadow-lg ${
+      isAlert 
+        ? 'bg-red-50/80 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 shadow-red-500/5' 
+        : 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 shadow-amber-500/5'
+    }`}>
+      <div className="absolute top-0 left-0 w-1 h-full bg-current opacity-60" 
+           style={{ color: isAlert ? '#EF4444' : '#F59E0B' }} />
+      
+      <div className="flex items-center gap-4 px-5 py-4">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+          isAlert ? 'bg-red-100 dark:bg-red-900/50 text-red-600' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600'
+        }`}>
+          {isAlert ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <h4 className={`text-sm font-bold ${isAlert ? 'text-red-900 dark:text-red-200' : 'text-amber-900 dark:text-amber-200'}`}>
+            {alert.title}
+          </h4>
+          <p className={`text-xs mt-1 ${isAlert ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+            {alert.message}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onAskCoach}
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white shadow-sm transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: isAlert ? '#EF4444' : '#F59E0B' }}
+          >
+            Solucionar
+          </button>
+          <button 
+            onClick={onDismiss} 
+            className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-muted"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -251,8 +274,6 @@ DATOS FINANCIEROS DEL USUARIO:
 ${ctx}`
 }
 
-// ── Transaction parsing ────────────────────────────────────────────────────────
-
 function parseTransactionTag(text) {
   const match = text.match(/\nFINIO_TX:(\{[^\n]+\})/)
   if (!match) return { cleanText: text, pending: null }
@@ -270,30 +291,32 @@ function parseTransactionTag(text) {
 function TransactionConfirmCard({ tx, onConfirm, onDismiss }) {
   const isExpense = tx.amount < 0
   return (
-    <div className="mt-2 rounded-xl border-2 border-dashed p-3 bg-white" style={{ borderColor: '#bfdbfe' }}>
-      <p className="text-2xs font-medium mb-2" style={{ color: '#185FA5' }}>¿Registro esta transacción?</p>
-      <div className="flex items-center justify-between mb-3">
+    <div className="mt-4 rounded-2xl border-2 border-dashed p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-blue-200 dark:border-blue-900/50">
+      <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-3 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><rect x="2" y="7" width="20" height="10" rx="2"/></svg>
+        ¿Confirmas este registro?
+      </p>
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm font-medium text-primary">{tx.description}</p>
-          <p className="text-2xs text-muted mt-0.5">{tx.category} · {tx.date}</p>
+          <p className="text-sm font-bold text-primary">{tx.description}</p>
+          <p className="text-xs text-muted mt-0.5">{tx.category} · {tx.date}</p>
         </div>
-        <p className="text-sm font-medium tabular" style={{ color: isExpense ? '#993C1D' : '#0F6E56' }}>
+        <p className={`text-lg font-black tabular ${isExpense ? 'text-red-500' : 'text-emerald-500'}`}>
           {tx.amount > 0 ? '+' : ''}{Math.abs(tx.amount).toFixed(2)}€
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           onClick={onConfirm}
-          className="flex-1 text-xs py-1.5 rounded-lg text-white font-medium transition-colors"
-          style={{ backgroundColor: '#185FA5' }}
+          className="flex-1 text-xs py-2.5 rounded-xl text-white font-bold transition-all bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:scale-95"
         >
-          Registrar
+          Si, registrar
         </button>
         <button
           onClick={onDismiss}
-          className="flex-1 text-xs py-1.5 rounded-lg border border-border text-secondary hover:bg-page transition-colors"
+          className="flex-1 text-xs py-2.5 rounded-xl border border-border text-secondary font-bold transition-all hover:bg-page active:scale-95"
         >
-          No, descartar
+          Descartar
         </button>
       </div>
     </div>
@@ -302,31 +325,31 @@ function TransactionConfirmCard({ tx, onConfirm, onDismiss }) {
 
 function ChatBubble({ message, onConfirmTx, onDismissTx }) {
   const isUser = message.role === 'user'
+  
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
       {!isUser && (
-        <div
-          className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 flex-shrink-0"
-          style={{ backgroundColor: '#185FA5', fontFamily: 'Georgia, serif' }}
-        >
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-xs mr-3 mt-1 flex-shrink-0 shadow-lg shadow-blue-500/20 bg-gradient-to-br from-blue-500 to-blue-700 text-center">
           F
         </div>
       )}
-      <div className="max-w-[78%] flex flex-col">
+      <div className={`max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <div
-          className={`px-4 py-3 rounded-lg text-sm leading-relaxed ${
-            isUser ? 'text-white rounded-br-sm' : 'text-primary bg-card border border-border rounded-bl-sm'
+          className={`px-5 py-4 rounded-3xl text-sm leading-relaxed shadow-sm transition-all ${
+            isUser 
+              ? 'bg-gradient-to-br from-slate-800 to-slate-900 dark:from-blue-600 dark:to-blue-700 text-white rounded-tr-none' 
+              : 'bg-card border border-border/50 text-primary rounded-tl-none'
           }`}
-          style={isUser ? { backgroundColor: '#185FA5' } : undefined}
         >
-          {message.content || (
-            <span className="flex gap-1 items-center text-muted">
-              <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: '300ms' }} />
+          {message.content ? message.content : (
+            <span className="flex gap-1.5 items-center py-1 overflow-hidden">
+               <span className="w-2 h-2 rounded-full bg-blue-500/40 animate-[bounce_1s_infinite_0ms]" />
+               <span className="w-2 h-2 rounded-full bg-blue-500/60 animate-[bounce_1s_infinite_200ms]" />
+               <span className="w-2 h-2 rounded-full bg-blue-500 animate-[bounce_1s_infinite_400ms]" />
             </span>
           )}
         </div>
+        
         {message.pendingTx && !message.txDone && (
           <TransactionConfirmCard
             tx={message.pendingTx}
@@ -334,11 +357,18 @@ function ChatBubble({ message, onConfirmTx, onDismissTx }) {
             onDismiss={onDismissTx}
           />
         )}
+        
         {message.txDone === 'confirmed' && (
-          <p className="text-2xs mt-1 ml-1" style={{ color: '#0F6E56' }}>✓ Transacción registrada</p>
+          <div className="flex items-center gap-1.5 mt-2 ml-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            REGISTRADO
+          </div>
         )}
+        
         {message.txDone === 'dismissed' && (
-          <p className="text-2xs mt-1 ml-1 text-muted">Descartada</p>
+          <div className="flex items-center gap-1.5 mt-2 ml-1 text-[10px] font-bold text-muted">
+             DESCARTADO
+          </div>
         )}
       </div>
     </div>
@@ -346,24 +376,32 @@ function ChatBubble({ message, onConfirmTx, onDismissTx }) {
 }
 
 function InsightCard({ title, value, detail, status, icon }) {
-  const s = {
-    ok:      { bg: '#EAF3DE', text: '#0F6E56', dot: '#0F6E56' },
-    warning: { bg: '#FAEEDA', text: '#854F0B', dot: '#854F0B' },
-    alert:   { bg: '#FAECE7', text: '#993C1D', dot: '#993C1D' },
-    neutral: { bg: '#EFF6FF', text: '#185FA5', dot: '#185FA5' },
-  }[status] ?? { bg: '#EFF6FF', text: '#185FA5', dot: '#185FA5' }
+  const styles = {
+    ok:      { bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/30', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', shadow: 'shadow-emerald-500/5' },
+    warning: { bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-200 dark:border-amber-500/30', text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500', shadow: 'shadow-amber-500/5' },
+    alert:   { bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/30', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-500', shadow: 'shadow-red-500/5' },
+    neutral: { bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/30', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500', shadow: 'shadow-blue-500/5' },
+  }[status] || { bg: 'bg-slate-50 dark:bg-slate-500/10', border: 'border-slate-200 dark:border-slate-500/30', text: 'text-slate-700 dark:text-slate-400', dot: 'bg-slate-500', shadow: 'shadow-slate-500/5' }
 
   return (
-    <div className="bg-card rounded-lg border border-border shadow-card px-5 py-4">
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs text-muted font-medium">{title}</p>
-        <span className="text-base leading-none">{icon}</span>
+    <div className={`relative overflow-hidden bg-card rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${styles.border} ${styles.shadow}`}>
+      <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-5 pointer-events-none ${styles.dot}`} />
+      
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-2xl">{icon}</span>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted">{title}</p>
+        </div>
+        
+        <p className="text-2xl font-black text-primary mb-2 tabular tracking-tight">
+          {value}
+        </p>
+        
+        <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl border ${styles.bg} ${styles.border} ${styles.text}`}>
+          <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${styles.dot}`} />
+          {detail}
+        </div>
       </div>
-      <p className="text-xl font-medium tabular tracking-tight text-primary mb-1">{value}</p>
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: s.bg, color: s.text }}>
-        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.dot }} />
-        {detail}
-      </span>
     </div>
   )
 }
@@ -380,51 +418,72 @@ function Rule502030({ transactions }) {
   const saving = transactions.filter(t => t.tipo === 'Ahorro').reduce((s, t) => s + Math.abs(t.amount), 0)
 
   const rows = [
-    { label: 'Necesidades', actual: needs,  target: 0.50, color: '#185FA5', targetLabel: '50%' },
-    { label: 'Deseos',      actual: wants,  target: 0.30, color: '#2599af', targetLabel: '30%' },
-    { label: 'Ahorro',      actual: saving, target: 0.20, color: '#0F6E56', targetLabel: '20%' },
+    { label: 'Necesidades', actual: needs,  target: 0.50, color: 'bg-blue-600', text: 'text-blue-600', targetLabel: '50%' },
+    { label: 'Deseos',      actual: wants,  target: 0.30, color: 'bg-indigo-500', text: 'text-indigo-500', targetLabel: '30%' },
+    { label: 'Ahorro',      actual: saving, target: 0.20, color: 'bg-emerald-500', text: 'text-emerald-500', targetLabel: '20%' },
   ]
 
   return (
-    <div className="bg-card rounded-lg border border-border shadow-card px-5 py-5">
-      <div className="flex items-baseline justify-between mb-4">
-        <p className="text-sm font-medium text-primary">Regla 50/30/20</p>
-        <p className="text-xs text-muted">Basado en {fmt(income)} de ingresos</p>
-      </div>
-      <div className="space-y-4">
-        {rows.map(({ label, actual, target, color, targetLabel }) => {
-          const actualPct = income > 0 ? (actual / income) * 100 : 0
-          const targetPct = target * 100
-          const over = actualPct > targetPct
-          return (
-            <div key={label}>
-              <div className="flex justify-between items-baseline mb-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                  <span className="text-sm text-primary">{label}</span>
-                  <span className="text-xs text-muted">objetivo {targetLabel}</span>
+    <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden group">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className="text-sm font-black text-primary flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Regla 50/30/20
+            </h3>
+            <p className="text-xs text-muted mt-1">Tu distribución ideal vs real</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xl font-black text-primary tabular">{fmt(income)}</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-tighter">Ingresos analizados</p>
+          </div>
+        </div>
+        
+        <div className="space-y-8">
+          {rows.map(({ label, actual, target, color, text, targetLabel }) => {
+            const actualPct = income > 0 ? (actual / income) * 100 : 0
+            const targetPct = target * 100
+            const over = actualPct > targetPct
+            return (
+              <div key={label} className="relative">
+                <div className="flex justify-between items-end mb-2.5">
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${over ? 'text-red-500' : text}`}>
+                      {label}
+                    </span>
+                    <p className="text-sm font-bold text-primary tabular">{fmt(actual)}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-black tabular">
+                      {actualPct.toFixed(1)}%
+                    </span>
+                    <p className="text-[10px] font-bold text-muted uppercase">Meta {targetLabel}</p>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium tabular" style={{ color: over ? '#993C1D' : color }}>
-                    {actualPct.toFixed(1)}%
-                  </span>
-                  <span className="text-xs text-muted tabular">{fmt(actual)}</span>
+                
+                <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${over ? 'bg-red-500' : color}`}
+                    style={{ width: `${Math.min(actualPct, 100)}%` }}
+                  />
+                  {/* Goal marker */}
+                  <div 
+                    className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                    style={{ left: `${targetPct}%` }}
+                  />
                 </div>
               </div>
-              <div className="relative h-2 bg-page rounded-full overflow-hidden">
-                <div className="absolute top-0 h-full w-0.5 bg-border z-10" style={{ left: `${targetPct}%` }} />
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(actualPct, 100)}%`, backgroundColor: over ? '#993C1D' : color, opacity: 0.85 }}
-                />
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+        
+        <div className="mt-8 pt-6 border-t border-border/50">
+          <p className="text-[10px] font-medium text-muted leading-relaxed italic text-center">
+            "La libertad financiera empieza por entender dónde va cada euro de tu salario."
+          </p>
+        </div>
       </div>
-      <p className="text-xs text-muted mt-4 pt-4 border-t border-border/50">
-        La línea vertical marca el objetivo. Rojo = superado.
-      </p>
     </div>
   )
 }
@@ -432,12 +491,12 @@ function Rule502030({ transactions }) {
 // ── Quick actions ──────────────────────────────────────────────────────────────
 
 const QUICK_CHIPS = [
-  { label: '¿En qué gasto más?',             prompt: '¿En qué categoría estoy gastando más este mes y qué puedo hacer al respecto?' },
-  { label: 'Plan de acción del mes',          prompt: 'Dame un plan de acción concreto para este mes con 3-5 acciones específicas que mejoren mi situación financiera, indicando importes exactos y el impacto esperado.' },
-  { label: '¿Cómo mejorar mi ahorro?',        prompt: '¿Cómo puedo mejorar mi tasa de ahorro este mes? Dame acciones concretas.' },
-  { label: '¿Sigo la regla 50/30/20?',        prompt: '¿Estoy siguiendo la regla 50/30/20? Analiza mis datos reales y dime qué ajustar.' },
-  { label: '¿Cuánto me queda de presupuesto?', prompt: '¿Cuánto me queda de presupuesto en cada categoría este mes?' },
-  { label: 'Registrar gasto o ingreso',        prompt: null, special: 'register' },
+  { label: '🔥 ¿En qué gasto más?',             prompt: '¿En qué categoría estoy gastando más este mes y qué puedo hacer al respecto?' },
+  { label: '🚀 Plan de acción',                 prompt: 'Dame un plan de acción concreto para este mes con 3-5 acciones específicas que mejoren mi situación financiera, indicando importes exactos y el impacto esperado.' },
+  { label: '💰 ¿Cómo ahorro más?',             prompt: '¿Cómo puedo mejorar mi tasa de ahorro este mes? Dame acciones concretas.' },
+  { label: '⚖️ ¿Regla 50/30/20?',             prompt: '¿Estoy siguiendo la regla 50/30/20? Analiza mi situación real y dime qué puedo ajustar.' },
+  { label: '💸 ¿Me queda dinero?',              prompt: '¿Cuánto me queda de presupuesto en cada categoría este mes?' },
+  { label: '✍️ Registrar gasto',               prompt: null, special: 'register' },
 ]
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -480,7 +539,7 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
     localStorage.setItem('finio_dismissed_alerts', JSON.stringify(next))
   }
 
-  // Auto-analysis once per month on first visit with data
+  // Auto-analysis
   const autoAnalyzeKey = `finio_coach_analyzed_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`
   useEffect(() => {
     const now = new Date()
@@ -490,7 +549,7 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
     if (!done && tx.length > 0) {
       localStorage.setItem(autoAnalyzeKey, '1')
       const timer = setTimeout(() => {
-        send('Analiza mi situación financiera este mes y dame un resumen ejecutivo en 3-4 puntos clave.')
+        send('Analiza mi situación financiera este mes y dime un resumen ejecutivo en 3-4 puntos clave de alto impacto.')
       }, 900)
       return () => clearTimeout(timer)
     }
@@ -528,9 +587,7 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
     setMessages(prev => [...prev, userMsg, { role: 'assistant', content: '' }])
 
     const isProd = import.meta.env.PROD
-    const apiUrl = isProd
-      ? 'https://api.anthropic.com/v1/messages'
-      : '/api/claude/v1/messages'
+    const apiUrl = isProd ? 'https://api.anthropic.com/v1/messages' : '/api/claude/v1/messages'
     const apiHeaders = isProd
       ? {
           'Content-Type': 'application/json',
@@ -545,7 +602,7 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
         method: 'POST',
         headers: apiHeaders,
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 1200,
           system: buildSystemPrompt(transactions, selectedMonth, cats),
           messages: next,
@@ -576,7 +633,7 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
         const updated = [...prev]
         updated[updated.length - 1] = {
           role: 'assistant',
-          content: `No se pudo conectar: ${err.message}`,
+          content: `Vaya, tengo problemas para conectar: ${err.message}. ¿Probamos de nuevo?`,
         }
         return updated
       })
@@ -609,228 +666,249 @@ export default function Coach({ transactions, selectedMonth, onMonthChange, cats
     if (chip.special === 'register') {
       setRegisterMode(true)
       inputRef.current?.focus()
-      setInput('Acabo de ')
+      setInput('Pagué ')
       return
     }
     send(chip.prompt)
   }
 
   return (
-    <div className="space-y-6 pb-4">
-      {/* Dark header */}
-      <div className="rounded-xl px-6 py-5" style={{ backgroundColor: '#042C53' }}>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: '#185FA5', fontFamily: 'Georgia, serif' }}>F</div>
-              <h1 className="text-lg font-medium text-white">Finio Coach</h1>
+    <div className="max-w-6xl mx-auto pb-12">
+      {/* ── PREMIUM HEADER ────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-[2.5rem] p-8 mb-10 shadow-2xl bg-gradient-to-br from-[#042C53] via-[#0A4A8F] to-[#185FA5]">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 bg-blue-400/10 rounded-full -ml-20 -mb-20 blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+          <div className="flex-1">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-blue-600 font-black text-2xl shadow-xl bg-white">
+                F
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-white tracking-tight">Finio Coach</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-blue-200">Inteligencia Artificial Activa</p>
+                </div>
+              </div>
             </div>
-            <p className="text-sm" style={{ color: '#93C5FD' }}>
-              Tu asesor financiero con IA. Analiza tus datos, genera planes de acción y registra gastos por chat.
+            <p className="text-blue-100 text-lg font-medium leading-relaxed max-w-xl opacity-90">
+              "Tu salud financiera, analizada segundo a segundo para ayudarte a tomar mejores decisiones."
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2.5 mt-0.5">
-            <div className="flex items-center gap-0.5">
+          
+          <div className="flex flex-col items-center md:items-end gap-6">
+            {/* Month Selector */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1.5 flex items-center shadow-lg border border-white/10">
               <button
                 onClick={() => onMonthChange(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))}
-                className="w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-white/10"
-                style={{ color: '#93C5FD' }}
+                className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:bg-white/20 text-white"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
               </button>
-              <span className="text-sm select-none px-1 min-w-[112px] text-center" style={{ color: '#93C5FD' }}>{monthDisplay}</span>
+              <span className="text-sm font-black text-white px-6 min-w-[140px] text-center uppercase tracking-widest">{monthDisplay}</span>
               <button
                 onClick={() => !isCurrentMonth && onMonthChange(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
                 disabled={isCurrentMonth}
-                className="w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ color: '#93C5FD' }}
+                className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:bg-white/20 text-white disabled:opacity-20"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs" style={{ color: '#93C5FD' }}>Activo</span>
-            </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
-            <p className="text-xs mb-0.5" style={{ color: '#93C5FD' }}>Ingresos del mes</p>
-            <p className="text-base font-medium text-white tabular">{fmt(income)}</p>
-          </div>
-          <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
-            <p className="text-xs mb-0.5" style={{ color: '#93C5FD' }}>Tasa de ahorro</p>
-            <p className="text-base font-medium text-white tabular">{savingRate.toFixed(1)}%</p>
-          </div>
-          <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
-            <p className="text-xs mb-0.5" style={{ color: '#93C5FD' }}>Categorías sobre límite</p>
-            <p className="text-base font-medium text-white tabular">{overBudget.length}</p>
-          </div>
+
+        {/* Micro Stats Header */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+           {[
+             { label: 'INGRESOS', val: fmt(income), icon: '💰' },
+             { label: 'AHORRO', val: `${savingRate.toFixed(1)}%`, icon: '⚡' },
+             { label: 'GASTO FIJO', val: fmt(fixedTotal), icon: '🏢' },
+             { label: 'CUIDADO', val: `${overBudget.length} EXCESOS`, icon: '⚠️' }
+           ].map((s, i) => (
+             <div key={i} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl px-5 py-4 transition-all hover:bg-white/15">
+               <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-sm">{s.icon}</span>
+                  <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest">{s.label}</p>
+               </div>
+               <p className="text-lg font-black text-white tabular">{s.val}</p>
+             </div>
+           ))}
         </div>
       </div>
 
-      {/* Proactive alerts */}
-      {visibleAlerts.length > 0 && (
-        <div className="space-y-2">
-          {visibleAlerts.map(alert => (
-            <ProactiveAlertCard
-              key={alert.id}
-              alert={alert}
-              onDismiss={() => dismissAlert(alert.id)}
-              onAskCoach={() => { dismissAlert(alert.id); send(alert.prompt) }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Insight cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InsightCard
-          title="Presupuestos superados"
-          value={overBudget.length === 0 ? 'Ninguno' : `${overBudget.length} categoría${overBudget.length > 1 ? 's' : ''}`}
-          detail={overBudget.length === 0 ? 'Todo dentro del presupuesto' : overBudget.map(b => b.category).join(', ')}
-          status={overBudget.length === 0 ? 'ok' : overBudget.length > 2 ? 'alert' : 'warning'}
-          icon="📊"
-        />
-        <InsightCard
-          title="Ahorro del mes"
-          value={fmt(totalAhorro)}
-          detail={savingRate >= 20 ? `${savingRate.toFixed(1)}% — objetivo 20% ✓` : `${savingRate.toFixed(1)}% — faltan ${(20 - savingRate).toFixed(1)}pp`}
-          status={savingRate >= 20 ? 'ok' : savingRate >= 10 ? 'warning' : 'alert'}
-          icon="💰"
-        />
-        <InsightCard
-          title="Gastos fijos mensuales"
-          value={fmt(fixedTotal)}
-          detail={income > 0 ? `${((fixedTotal / income) * 100).toFixed(1)}% de tus ingresos` : 'Sin ingresos registrados'}
-          status={fixedTotal / (income || 1) < 0.4 ? 'ok' : fixedTotal / (income || 1) < 0.55 ? 'warning' : 'alert'}
-          icon="🔒"
-        />
-        <InsightCard
-          title={isCurrentMonth ? 'Proyección fin de mes' : 'Balance del mes'}
-          value={fmt(isCurrentMonth ? projected : income - totalExpense)}
-          detail={isCurrentMonth
-            ? (projected >= 0 ? `Ritmo: ${fmt(Math.round(dailyPace))}/día` : 'Gastas más de lo que ingresas')
-            : 'Mes cerrado'}
-          status={isCurrentMonth ? (projected >= 200 ? 'ok' : projected >= 0 ? 'warning' : 'alert') : ((income - totalExpense) >= 0 ? 'ok' : 'alert')}
-          icon="📈"
-        />
-      </div>
-
-      {/* 50/30/20 */}
-      <Rule502030 transactions={tx} />
-
-      {/* Chat */}
-      <div className="bg-card rounded-lg border border-border shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
-          <div className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#185FA5', fontFamily: 'Georgia, serif' }}>F</div>
-          <p className="text-sm font-medium text-primary">Chat con Finio Coach</p>
-          <span className="text-2xs text-muted ml-auto">Contexto de {monthDisplay}</span>
-          {messages.length > 0 && (
-            <button onClick={() => setMessages([])} className="text-2xs text-muted hover:text-secondary transition-colors ml-2">
-              Limpiar
-            </button>
+      {/* ── MAIN CONTENT GRID ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        
+        {/* Left Col: Alerts & Insights */}
+        <div className="lg:col-span-1 space-y-8 order-2 lg:order-1">
+          {visibleAlerts.length > 0 && (
+            <section>
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted mb-4 px-1">Alertas Inteligentes</h2>
+              <div className="space-y-4">
+                {visibleAlerts.map(alert => (
+                  <ProactiveAlertCard
+                    key={alert.id}
+                    alert={alert}
+                    onDismiss={() => dismissAlert(alert.id)}
+                    onAskCoach={() => { dismissAlert(alert.id); send(alert.prompt) }}
+                  />
+                ))}
+              </div>
+            </section>
           )}
-        </div>
 
-        {/* Messages */}
-        <div className="px-5 py-4 space-y-3 min-h-[220px] max-h-[400px] overflow-y-auto">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full pt-8 text-center">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg mb-3" style={{ backgroundColor: '#185FA5', fontFamily: 'Georgia, serif' }}>F</div>
-              <p className="text-sm font-medium text-primary">Pregúntame sobre tus finanzas</p>
-              <p className="text-xs text-muted mt-1 max-w-xs">
-                Puedo analizar tus gastos, generar un plan de acción o registrar transacciones directamente por aquí.
-              </p>
-            </div>
-          )}
-          {messages.map((m, i) => (
-            <ChatBubble
-              key={i}
-              message={m}
-              onConfirmTx={() => handleConfirmTx(i)}
-              onDismissTx={() => handleDismissTx(i)}
-            />
-          ))}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Register mode hint */}
-        {registerMode && (
-          <div className="mx-5 mb-2 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#EFF6FF', color: '#185FA5' }}>
-            Escribe algo como: "Acabo de pagar 45€ en Mercadona" — y lo registro automáticamente
-          </div>
-        )}
-
-        {/* Quick chips */}
-        <div className="px-5 pb-3 flex flex-wrap gap-1.5">
-          {QUICK_CHIPS.map(chip => (
-            <button
-              key={chip.label}
-              onClick={() => handleChip(chip)}
-              disabled={loading}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 ${
-                chip.special === 'register'
-                  ? 'border-tri-300 bg-tri-50 text-tri-700 hover:bg-tri-100'
-                  : 'border-border bg-page hover:bg-tri-50 text-secondary'
-              }`}
-            >
-              {chip.special === 'register' ? '+ ' : ''}{chip.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Input */}
-        <div className="px-5 pb-4">
-          {voiceError && (
-            <p className="text-xs mb-2 px-1" style={{ color: '#993C1D' }}>{voiceError}</p>
-          )}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
-                placeholder={listening ? 'Escuchando...' : registerMode ? 'Ej: Pagué 45€ en Mercadona hoy...' : 'Escribe tu pregunta...'}
-                disabled={loading}
-                className="w-full text-sm border border-border rounded-sm px-3 py-2 pr-10 bg-white focus:outline-none focus:border-tri-300 transition-colors disabled:opacity-50"
-                style={listening ? { borderColor: '#F87171' } : undefined}
+          <section>
+            <h2 className="text-xs font-black uppercase tracking-widest text-muted mb-4 px-1">Métricas de Control</h2>
+            <div className="grid grid-cols-1 gap-4">
+              <InsightCard
+                title="Presupuestos"
+                value={overBudget.length === 0 ? '¡Excelente!' : `${overBudget.length} Alertas`}
+                detail={overBudget.length === 0 ? 'Sin desviaciones este mes' : `${overBudget.length} categorías por encima`}
+                status={overBudget.length === 0 ? 'ok' : overBudget.length > 2 ? 'alert' : 'warning'}
+                icon="📊"
               />
-              {voiceSupported && (
-                <button
-                  type="button"
-                  onClick={listening ? stopVoice : startVoice}
-                  disabled={loading}
-                  title={listening ? 'Detener' : 'Hablar'}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
-                  style={listening
-                    ? { backgroundColor: '#FEE2E2', color: '#EF4444' }
-                    : { backgroundColor: 'transparent', color: '#9CA3AF' }}
-                >
-                  {listening ? (
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
-                  ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                      <line x1="12" y1="19" x2="12" y2="23"/>
-                      <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                  )}
-                </button>
-              )}
+              <InsightCard
+                title="Capacidad de Ahorro"
+                value={fmt(totalAhorro)}
+                detail={savingRate >= 20 ? 'Meta del 20% lograda ✓' : `${savingRate.toFixed(1)}% vs meta 20%`}
+                status={savingRate >= 20 ? 'ok' : savingRate >= 10 ? 'warning' : 'alert'}
+                icon="💎"
+              />
+              <InsightCard
+                title={isCurrentMonth ? 'Saldo Proyectado' : 'Resultado Mes'}
+                value={fmt(isCurrentMonth ? projected : income - totalExpense)}
+                detail={isCurrentMonth ? `Ritmo: ${fmt(dailyPace)}/día` : 'Balance final del período'}
+                status={isCurrentMonth ? (projected >= 200 ? 'ok' : projected >= 0 ? 'warning' : 'alert') : ((income - totalExpense) >= 0 ? 'ok' : 'alert')}
+                icon="🎯"
+              />
             </div>
-            <button
-              onClick={() => send(input)}
-              disabled={loading || !input.trim()}
-              className="px-4 py-2 rounded-sm text-sm font-medium text-white transition-colors disabled:opacity-40"
-              style={{ backgroundColor: '#185FA5' }}
-            >
-              {loading ? '...' : 'Enviar'}
-            </button>
+          </section>
+
+          <Rule502030 transactions={tx} />
+        </div>
+
+        {/* Right Col: The Chat Centerpiece */}
+        <div className="lg:col-span-2 order-1 lg:order-2">
+          <div className="bg-card rounded-[2rem] border border-border/50 shadow-2xl overflow-hidden flex flex-col h-[700px]">
+            {/* Chat header */}
+            <div className="px-8 py-6 border-b border-border/50 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black shadow-lg">F</div>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-white dark:border-slate-900 bg-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-primary">Chat de Estrategia</p>
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-0.5">Contexto: {monthDisplay}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {messages.length > 0 && (
+                  <button onClick={() => setMessages([])} className="text-xs font-bold text-muted hover:text-red-500 transition-colors flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Limpiar
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
+              {messages.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto opacity-50 space-y-4">
+                  <div className="w-20 h-20 rounded-[2rem] bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-4xl grayscale text-center">🤖</div>
+                  <div>
+                    <h3 className="text-lg font-black text-primary">¿En qué puedo ayudarte hoy?</h3>
+                    <p className="text-sm font-medium text-muted mt-2">
+                      Analizo tus transacciones para darte planes de ahorro personalizados. Pregúntame lo que quieras.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {messages.map((m, i) => (
+                <ChatBubble
+                  key={i}
+                  message={m}
+                  onConfirmTx={() => handleConfirmTx(i)}
+                  onDismissTx={() => handleDismissTx(i)}
+                  loading={loading && i === messages.length - 1}
+                />
+              ))}
+              <div ref={bottomRef} className="h-2" />
+            </div>
+
+            {/* Bottom Actions & Input */}
+            <div className="p-8 bg-slate-50/50 dark:bg-slate-900/50 border-t border-border/50">
+              
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {QUICK_CHIPS.map(chip => (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleChip(chip)}
+                    disabled={loading}
+                    className={`text-[10px] uppercase font-black tracking-widest px-4 py-2.5 rounded-xl border transition-all duration-200 active:scale-95 disabled:opacity-40 ${
+                      chip.special === 'register'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20 hover:bg-blue-700'
+                        : 'bg-white dark:bg-slate-800 border-border text-secondary hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {voiceError && (
+                <p className="text-[10px] font-black text-red-500 mb-2 uppercase tracking-widest">{voiceError}</p>
+              )}
+              
+              <div className="flex gap-4">
+                <div className="relative flex-1 group">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+                    placeholder={listening ? 'Escuchando voz...' : registerMode ? 'Ej: "Cena 25€" o "Ingreso 1200€"' : 'Escribe tu consulta financiera...'}
+                    disabled={loading}
+                    className="w-full h-14 bg-white dark:bg-slate-800 text-sm font-medium border-2 border-border/50 rounded-2xl px-6 pr-14 transition-all focus:outline-none focus:border-blue-500 focus:shadow-xl dark:placeholder-slate-500"
+                  />
+                  {voiceSupported && (
+                    <button
+                      type="button"
+                      onClick={listening ? stopVoice : startVoice}
+                      disabled={loading}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-xl transition-all ${
+                        listening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-blue-500'
+                      }`}
+                    >
+                      {listening ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => send(input)}
+                  disabled={loading || !input.trim()}
+                  className="h-14 px-8 bg-gradient-to-br from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                  ) : 'Analizar'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

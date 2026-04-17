@@ -6,7 +6,6 @@ export const RULES = [
   // ── INGRESOS ────────────────────────────────────────────────────────────
   { match: /accel/,                       category: 'Sueldo',                   tipo: 'Ingreso' },
   { match: /n[oó]mina|salario|sueldo/,    category: 'Sueldo',                   tipo: 'Ingreso' },
-  { match: /cuidado|adiestramiento|paseo|perr[oa]|berri|spock|panther|lady kar|canino/, category: 'Cuidado canino', tipo: 'Ingreso' },
   { match: /comisi[oó]n/,                 category: 'Sueldo',                   tipo: 'Ingreso' },
   { match: /transferencia recibida|ingreso n[oó]mina|abono n[oó]mina/, category: 'Sueldo', tipo: 'Ingreso' },
 
@@ -50,6 +49,7 @@ export const RULES = [
   { match: /barkibu|axa.?mascotas|seguros?.?mascota/, category: 'Mascotas',    tipo: 'Fijo'    },
   { match: /veterinari|vet\b|clinica.?animal|hospital.?animal/, category: 'Mascotas', tipo: 'Variable' },
   { match: /kiwoko|tiendanimal|tractive|zooplus|royal.?canin|hills|advance\b|pienso|comida.?(perro|gato|mascota)/, category: 'Mascotas', tipo: 'Variable' },
+  { match: /cuidado.?canino|cuidado.?felino|canino|adiestramiento|paseo.?perr|peluquer[ií]a.?(canina|felina)|guarderia.?animal|residencia.?animal|hotel.?mascotas?/, category: 'Mascotas', tipo: 'Variable' },
 
   // ── BELLEZA ─────────────────────────────────────────────────────────────
   { match: /peluquer[ií]a|barber[ií]a|barbero|nail|u[ñn]as|est[eé]tica|spa\b|masaje|depilacion/, category: 'Belleza', tipo: 'Variable' },

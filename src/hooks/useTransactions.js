@@ -58,6 +58,7 @@ export function useTransactions(user) {
     setTransactions(prev => {
       const next = [...withIds, ...prev]
       localSave(next)
+      localStorage.setItem('finio_last_import', new Date().toISOString())
       return next
     })
 
@@ -73,16 +74,56 @@ export function useTransactions(user) {
       localSave(next)
       return next
     })
-
     if (user) {
       const { error } = await supabase
         .from('transactions')
         .update({ category })
-        .eq('id', id)
-        .eq('user_id', user.id)
+        .eq('id', id).eq('user_id', user.id)
       if (error) console.error('Supabase update error:', error.message)
     }
   }
 
-  return { transactions, addTransactions, updateCategory, syncing }
+  async function updateTransaction(id, changes) {
+    setTransactions(prev => {
+      const next = prev.map(t => t.id === id ? { ...t, ...changes } : t)
+      localSave(next)
+      return next
+    })
+    if (user) {
+      const { error } = await supabase
+        .from('transactions')
+        .update(changes)
+        .eq('id', id).eq('user_id', user.id)
+      if (error) console.error('Supabase update error:', error.message)
+    }
+  }
+
+  async function deleteTransaction(id) {
+    setTransactions(prev => {
+      const next = prev.filter(t => t.id !== id)
+      localSave(next)
+      return next
+    })
+    if (user) {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id).eq('user_id', user.id)
+      if (error) console.error('Supabase delete error:', error.message)
+    }
+  }
+
+  async function deleteAllTransactions() {
+    setTransactions([])
+    localSave([])
+    if (user) {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('user_id', user.id)
+      if (error) console.error('Supabase delete all error:', error.message)
+    }
+  }
+
+  return { transactions, addTransactions, updateCategory, updateTransaction, deleteTransaction, deleteAllTransactions, syncing }
 }
