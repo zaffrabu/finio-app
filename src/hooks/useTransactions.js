@@ -18,17 +18,32 @@ function localSave(txs) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(txs)) } catch {}
 }
 
+// Only include columns that exist in the Supabase transactions table
+const SUPABASE_COLS = ['id', 'user_id', 'date', 'description', 'detail', 'amount', 'category', 'tipo', 'account', 'status']
+
+function toSupabaseRow(t) {
+  const row = {}
+  for (const col of SUPABASE_COLS) {
+    if (t[col] !== undefined) row[col] = t[col]
+  }
+  return row
+}
+
 async function insertBatched(rows) {
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE)
+  let totalErrors = 0
+  const clean = rows.map(toSupabaseRow)
+  for (let i = 0; i < clean.length; i += BATCH_SIZE) {
+    const batch = clean.slice(i, i + BATCH_SIZE)
     const { error } = await supabase.from('transactions').insert(batch)
     if (error) {
-      // Ignore duplicate key errors (already uploaded) — surface others
-      if (!error.message?.includes('duplicate') && !error.code?.includes('23505')) {
-        console.error('[sync] batch error:', error.message)
+      const isDup = error.message?.includes('duplicate') || error.code === '23505'
+      if (!isDup) {
+        console.error('[sync] batch error:', error.message, error.code)
+        totalErrors++
       }
     }
   }
+  return totalErrors
 }
 
 export function useTransactions(user) {
