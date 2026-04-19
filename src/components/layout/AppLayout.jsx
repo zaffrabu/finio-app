@@ -49,7 +49,18 @@ function StaleAppBanner() {
         La app está desactualizada y no puede conectar con tu cuenta. Recarga para solucionarlo.
       </span>
       <button
-        onClick={() => window.location.reload(true)}
+        onClick={async () => {
+          if ('caches' in window) {
+            try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))) } catch {}
+          }
+          if ('serviceWorker' in navigator) {
+            try {
+              const regs = await navigator.serviceWorker.getRegistrations()
+              await Promise.all(regs.map(r => r.unregister()))
+            } catch {}
+          }
+          window.location.reload()
+        }}
         style={{
           background: '#fff', color: '#B87D00', border: 'none', borderRadius: 7,
           padding: '6px 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
@@ -70,24 +81,52 @@ function StaleAppBanner() {
 
 // Banner shown when a new service worker is ready
 function UpdateBanner() {
-  const [show, setShow] = useState(false)
+  const [waitingWorker, setWaitingWorker] = useState(null)
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
-    navigator.serviceWorker.ready.then(reg => {
+
+    const checkForWaiting = (reg) => {
+      if (reg.waiting) {
+        setWaitingWorker(reg.waiting)
+        return
+      }
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing
         if (!newWorker) return
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            setShow(true)
+            setWaitingWorker(newWorker)
           }
         })
       })
+    }
+
+    navigator.serviceWorker.ready.then(checkForWaiting)
+
+    // Also reload when the new SW takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload()
     })
   }, [])
 
-  if (!show) return null
+  const handleUpdate = async () => {
+    // 1. Tell waiting SW to activate
+    if (waitingWorker) {
+      try { waitingWorker.postMessage({ type: 'SKIP_WAITING' }) } catch {}
+    }
+    // 2. Clear ALL caches (critical for Safari)
+    if ('caches' in window) {
+      try {
+        const keys = await caches.keys()
+        await Promise.all(keys.map(k => caches.delete(k)))
+      } catch {}
+    }
+    // 3. Hard reload
+    window.location.reload()
+  }
+
+  if (!waitingWorker) return null
 
   return (
     <div style={{
@@ -100,7 +139,7 @@ function UpdateBanner() {
     }}>
       <span>🆕 Nueva versión disponible</span>
       <button
-        onClick={() => window.location.reload()}
+        onClick={handleUpdate}
         style={{
           background: 'var(--acento)', color: '#fff', border: 'none', borderRadius: 7,
           padding: '6px 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer',
