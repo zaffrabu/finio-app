@@ -151,6 +151,164 @@ function NewTransactionModal({ categories, existingAccounts, onSave, onClose }) 
   )
 }
 
+// ── Posponer Previsto Modal ───────────────────────────────────────────────────
+function PostponerModal({ tx, onSave, onClose }) {
+  // Next-month same day as default target date
+  const nextMonthDate = (() => {
+    const d = new Date(tx.date)
+    d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
+
+  const absAmount   = Math.abs(tx.amount)
+  const [mode, setMode]         = useState('total')   // 'total' | 'parcial'
+  const [receivedAmt, setReceivedAmt] = useState('')  // lo que ya cobré (sólo en parcial)
+  const [newDate, setNewDate]   = useState(nextMonthDate)
+  const [saving, setSaving]     = useState(false)
+
+  const remaining = mode === 'parcial'
+    ? Math.max(0, absAmount - Math.abs(parseFloat(receivedAmt) || 0))
+    : absAmount
+
+  const isValid = newDate && remaining > 0 &&
+    (mode === 'total' || (parseFloat(receivedAmt) > 0 && parseFloat(receivedAmt) < absAmount))
+
+  const fieldStyle = {
+    padding: '8px 10px', borderRadius: 8, fontSize: 13,
+    border: '1px solid var(--border)', background: 'var(--bg-surface)',
+    color: 'var(--text-primary)', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
+  }
+
+  const handleSave = async () => {
+    if (!isValid) return
+    setSaving(true)
+    await onSave({
+      tx,
+      mode,
+      receivedAmt: mode === 'parcial' ? parseFloat(receivedAmt) : 0,
+      remaining,
+      newDate,
+    })
+    setSaving(false)
+    onClose()
+  }
+
+  const sign = tx.amount < 0 ? -1 : 1
+  const fmt = n => n.toLocaleString('es-ES', { minimumFractionDigits: 2 })
+
+  return (
+    <div className="cat-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="cat-modal" style={{ maxWidth: 460 }}>
+        <div className="cat-modal-header">
+          <div className="cat-modal-title">⏭ Posponer previsto</div>
+          <button className="cat-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="cat-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {/* Resumen del previsto original */}
+          <div style={{ background: 'var(--bg-surface2)', borderRadius: 10, padding: '12px 14px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{tx.description}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Previsto para {tx.date}</div>
+            </div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700,
+              color: sign > 0 ? 'var(--acento)' : 'var(--alerta)' }}>
+              {sign > 0 ? '+' : '−'}{fmt(absAmount)} €
+            </div>
+          </div>
+
+          {/* Tipo de posponer */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
+              ¿QUÉ OCURRIÓ?
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setMode('total')} style={{
+                flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                background: mode === 'total' ? 'rgba(155,143,255,0.15)' : 'var(--bg-surface2)',
+                color: mode === 'total' ? '#7C6FE0' : 'var(--text-muted)',
+                fontWeight: 700, fontSize: 13, transition: 'all 0.15s',
+                outline: mode === 'total' ? '2px solid #9B8FFF60' : 'none',
+              }}>
+                ⏭ No se cobró nada<br/>
+                <span style={{ fontSize: 11, fontWeight: 400 }}>Mover todo al siguiente mes</span>
+              </button>
+              <button onClick={() => setMode('parcial')} style={{
+                flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                background: mode === 'parcial' ? 'rgba(255,184,48,0.15)' : 'var(--bg-surface2)',
+                color: mode === 'parcial' ? '#B87D00' : 'var(--text-muted)',
+                fontWeight: 700, fontSize: 13, transition: 'all 0.15s',
+                outline: mode === 'parcial' ? '2px solid var(--aviso)60' : 'none',
+              }}>
+                💰 Cobro parcial<br/>
+                <span style={{ fontSize: 11, fontWeight: 400 }}>Sólo recibí una parte</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Si cobro parcial: cuánto recibí */}
+          {mode === 'parcial' && (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                IMPORTE RECIBIDO (€)
+              </label>
+              <input
+                type="number" step="0.01" min="0.01" max={absAmount - 0.01}
+                placeholder={`Menos de ${fmt(absAmount)} €`}
+                value={receivedAmt}
+                onChange={e => setReceivedAmt(e.target.value)}
+                style={{ ...fieldStyle, color: 'var(--aviso)', fontWeight: 600 }}
+              />
+              {parseFloat(receivedAmt) > 0 && parseFloat(receivedAmt) < absAmount && (
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between',
+                  fontSize: 12, color: 'var(--text-muted)', background: 'rgba(46,184,122,0.06)',
+                  borderRadius: 8, padding: '8px 12px' }}>
+                  <span>✅ Registrado como cobrado</span>
+                  <span style={{ fontWeight: 700, color: 'var(--aviso)' }}>
+                    Pendiente → {fmt(remaining)} €
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fecha destino */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+              NUEVA FECHA PREVISTA
+            </label>
+            <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} style={fieldStyle} />
+          </div>
+
+          {/* Resumen de lo que va a pasar */}
+          {isValid && (
+            <div style={{ background: 'rgba(46,184,122,0.06)', border: '1px solid rgba(46,184,122,0.2)',
+              borderRadius: 10, padding: '12px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--acento)', marginBottom: 6 }}>✅ Lo que pasará:</div>
+              {mode === 'parcial' && (
+                <div style={{ marginBottom: 4 }}>
+                  • Se creará un movimiento <strong>real</strong> de {sign > 0 ? '+' : '−'}{fmt(parseFloat(receivedAmt))} € (lo cobrado)
+                </div>
+              )}
+              <div style={{ marginBottom: 4 }}>
+                • Se creará un nuevo <strong>previsto</strong> de {sign > 0 ? '+' : '−'}{fmt(remaining)} € para {newDate}
+              </div>
+              <div>• El previsto original ({tx.date}) se eliminará</div>
+            </div>
+          )}
+        </div>
+        <div className="cat-modal-footer">
+          <button className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving || !isValid}>
+            {saving ? 'Guardando...' : '⏭ Posponer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Bulk Replace Modal ────────────────────────────────────────────────────────
 function BulkReplaceModal({ transactions, categories, onReplace, onClose }) {
   const uniqueCats = useMemo(() => {
@@ -304,6 +462,7 @@ export default function Movimientos() {
   const [showBulkReplace, setShowBulkReplace] = useState(false)
   const [viewMode, setViewMode]           = useState('lista')  // 'lista' | 'tabla'
   const [showNewModal, setShowNewModal]   = useState(false)
+  const [posponer, setPosponer]           = useState(null)  // tx to postpone
   const [page, setPage]                   = useState(0)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
@@ -448,6 +607,45 @@ export default function Movimientos() {
     else setConfirmDelete(id)
   }
 
+  const handlePosponer = useCallback(async ({ tx, mode, receivedAmt, remaining, newDate }) => {
+    // 1. Create new previsto for remaining amount
+    const newPrevisto = {
+      id: crypto.randomUUID(),
+      date: newDate,
+      description: tx.description,
+      detail: tx.detail || '',
+      amount: tx.amount < 0 ? -remaining : remaining,
+      category: tx.category || '',
+      tipo: tx.tipo || 'Variable',
+      account: tx.account || '',
+      status: 'previsto',
+      matchSource: 'manual',
+      user_id: tx.user_id,
+    }
+    await addTransactions([newPrevisto])
+
+    // 2. If partial: create a real transaction for the received amount
+    if (mode === 'parcial' && receivedAmt > 0) {
+      const realTx = {
+        id: crypto.randomUUID(),
+        date: tx.date,
+        description: tx.description,
+        detail: `Cobro parcial (previsto: ${Math.abs(tx.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €)`,
+        amount: tx.amount < 0 ? -receivedAmt : receivedAmt,
+        category: tx.category || '',
+        tipo: tx.tipo || 'Variable',
+        account: tx.account || '',
+        status: 'real',
+        matchSource: 'manual',
+        user_id: tx.user_id,
+      }
+      await addTransactions([realTx])
+    }
+
+    // 3. Delete original previsto
+    await deleteTransaction(tx.id)
+  }, [addTransactions, deleteTransaction])
+
   // Category dropdown component
   function CatSelect({ value, onChange, style = {} }) {
     const meta = getCatMeta(value)
@@ -485,6 +683,15 @@ export default function Movimientos() {
           existingAccounts={existingAccounts}
           onSave={tx => addTransactions([tx])}
           onClose={() => setShowNewModal(false)}
+        />
+      )}
+
+      {/* Modal posponer previsto */}
+      {posponer && (
+        <PostponerModal
+          tx={posponer}
+          onSave={handlePosponer}
+          onClose={() => setPosponer(null)}
         />
       )}
 
@@ -839,12 +1046,24 @@ export default function Movimientos() {
                           <td><span className="mov-date-sm">{t.account || '—'}</span></td>
                           <td><div className={`mov-amount-sm${isIncome ? ' income' : ''}`}>{isIncome ? '+' : ''}{t.amount.toLocaleString('es-ES',{minimumFractionDigits:2})} €</div></td>
                           <td style={{ textAlign:'center' }}>
-                            <button title={isPend ? '¿Confirmar?' : 'Eliminar'}
-                              onClick={e => { e.stopPropagation(); handleDelete(t.id) }}
-                              onBlur={() => setTimeout(() => setConfirmDelete(c => c === t.id ? null : c), 200)}
-                              style={{ background: isPend ? 'var(--alerta)' : 'none', border: isPend ? 'none' : '1px solid var(--border)', borderRadius:6, color: isPend ? '#fff' : 'var(--text-muted)', cursor:'pointer', padding:'4px 8px', fontSize:13, transition:'all 0.15s', whiteSpace:'nowrap' }}>
-                              {isPend ? '¿Borrar?' : '🗑'}
-                            </button>
+                            <div style={{ display:'flex', gap:4, justifyContent:'center' }}>
+                              {statusTab === 'previsto' && (
+                                <button
+                                  title="Posponer al mes siguiente"
+                                  onClick={e => { e.stopPropagation(); setPosponer(t) }}
+                                  style={{ background:'rgba(155,143,255,0.12)', border:'1px solid #9B8FFF50',
+                                    borderRadius:6, color:'#7C6FE0', cursor:'pointer', padding:'4px 8px',
+                                    fontSize:12, fontWeight:600, whiteSpace:'nowrap', transition:'all 0.15s' }}>
+                                  ⏭
+                                </button>
+                              )}
+                              <button title={isPend ? '¿Confirmar?' : 'Eliminar'}
+                                onClick={e => { e.stopPropagation(); handleDelete(t.id) }}
+                                onBlur={() => setTimeout(() => setConfirmDelete(c => c === t.id ? null : c), 200)}
+                                style={{ background: isPend ? 'var(--alerta)' : 'none', border: isPend ? 'none' : '1px solid var(--border)', borderRadius:6, color: isPend ? '#fff' : 'var(--text-muted)', cursor:'pointer', padding:'4px 8px', fontSize:13, transition:'all 0.15s', whiteSpace:'nowrap' }}>
+                                {isPend ? '¿Borrar?' : '🗑'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )
