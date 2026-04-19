@@ -432,7 +432,7 @@ function SectionHeader({ icon, iconBg, title, desc }) {
 export default function Ajustes() {
   const navigate = useNavigate()
   const { user, signOut } = useAuthContext()
-  const { settings, categories, spendingByCategory, transactions, income, saveSettings, addCategory, updateCategory, deleteCategory, loading } = useData()
+  const { settings, categories, spendingByCategory, transactions, income, saveSettings, addCategory, updateCategory, deleteCategory, loading, syncToCloud, cloudSyncing, cloudSyncDone } = useData()
 
   const [activePane, setActivePane] = useState('perfil')
   const [saveError, setSaveError] = useState('')
@@ -1202,6 +1202,38 @@ export default function Ajustes() {
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: 'var(--text-secondary)' }}>{fmt(income)} €</span>
                 </SettingsRow>
               </div>
+
+              {/* Sync to cloud */}
+              <div className="settings-section">
+                <SectionHeader icon="☁️" iconBg="rgba(79,201,239,0.1)" title="Sincronización" desc="Sube tus datos locales a la nube para verlos en cualquier dispositivo" />
+                <SettingsRow
+                  icon="🔄"
+                  label="Subir datos a la nube"
+                  sub={
+                    cloudSyncDone
+                      ? '✅ Sincronizado correctamente — ya puedes abrir la app en Safari / móvil'
+                      : `Sube los ${transactions.length} movimientos de este navegador a Supabase`
+                  }
+                >
+                  <button
+                    className={cloudSyncDone ? 'btn-secondary' : 'btn-primary'}
+                    disabled={cloudSyncing || transactions.length === 0}
+                    onClick={async () => {
+                      const result = await syncToCloud()
+                      if (result?.error) alert('Error: ' + result.error)
+                    }}
+                    style={{ minWidth: 140, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
+                  >
+                    {cloudSyncing ? (
+                      <>
+                        <div style={{ width: 12, height: 12, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'authSpin 0.6s linear infinite' }} />
+                        Subiendo…
+                      </>
+                    ) : cloudSyncDone ? '✅ Listo' : '☁️ Sincronizar ahora'}
+                  </button>
+                </SettingsRow>
+              </div>
+
               <div className="settings-section">
                 <SectionHeader icon="📥" iconBg="rgba(46,184,122,0.1)" title="Importar datos" desc="Importa un extracto bancario para añadir movimientos" />
                 <SettingsRow icon="📁" label="Importar desde CSV / Excel" sub="Sube tu extracto bancario y finio lo procesa automáticamente">
