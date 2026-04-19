@@ -31,15 +31,29 @@ function toSupabaseRow(t) {
 
 async function insertBatched(rows) {
   let totalErrors = 0
-  const clean = rows.map(toSupabaseRow)
+  // Filter out rows missing required fields, then strip unknown columns
+  const clean = rows
+    .filter(r => r.date && r.amount !== undefined && r.amount !== null)
+    .map(toSupabaseRow)
+
   for (let i = 0; i < clean.length; i += BATCH_SIZE) {
     const batch = clean.slice(i, i + BATCH_SIZE)
-    const { error } = await supabase.from('transactions').insert(batch)
+    // upsert handles duplicates gracefully (no error on conflict)
+    const { error } = await supabase
+      .from('transactions')
+      .upsert(batch, { onConflict: 'id', ignoreDuplicates: true })
+
     if (error) {
-      const isDup = error.message?.includes('duplicate') || error.code === '23505'
-      if (!isDup) {
-        console.error('[sync] batch error:', error.message, error.code)
-        totalErrors++
+      console.warn('[sync] batch upsert failed, retrying row-by-row:', error.message)
+      // Fallback: insert one-by-one to skip just the bad rows
+      for (const row of batch) {
+        const { error: rowErr } = await supabase
+          .from('transactions')
+          .upsert([row], { onConflict: 'id', ignoreDuplicates: true })
+        if (rowErr) {
+          console.error('[sync] row error:', rowErr.message, rowErr.code, row.id)
+          totalErrors++
+        }
       }
     }
   }
@@ -109,9 +123,21 @@ export function useTransactions(user) {
     if (local.length === 0) { setCloudSyncing(false); return { synced: 0 } }
     const withUser = local.map(t => ({ ...t, user_id: user.id, id: t.id || crypto.randomUUID() }))
     await insertBatched(withUser)
+
+    // After upload, re-fetch from Supabase to get the real count & update state
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+    if (!error && data) {
+      setTransactions(data)
+      localSave(data)
+    }
+
     setCloudSyncing(false)
     setCloudSyncDone(true)
-    return { synced: withUser.length }
+    return { synced: data?.length ?? withUser.length }
   }, [user])
 
   async function addTransactions(newItems) {
