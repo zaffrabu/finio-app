@@ -26,6 +26,20 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           navigateFallback: '/finio-app/index.html',
+          // Take control immediately when a new SW is installed (no waiting for tabs to close)
+          skipWaiting: true,
+          clientsClaim: true,
+          // Never cache Supabase API calls — always go to network
+          navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//],
+          runtimeCaching: [
+            {
+              // Supabase REST API — NetworkOnly (never cache DB data)
+              urlPattern: /^https:\/\/[a-z]+\.supabase\.co\//,
+              handler: 'NetworkOnly',
+            },
+          ],
+          // Clean up old caches automatically
+          cleanupOutdatedCaches: true,
         }
       })
     ],
