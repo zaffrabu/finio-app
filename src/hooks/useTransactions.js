@@ -124,20 +124,22 @@ export function useTransactions(user) {
     const withUser = local.map(t => ({ ...t, user_id: user.id, id: t.id || crypto.randomUUID() }))
     await insertBatched(withUser)
 
-    // After upload, re-fetch from Supabase to get the real count & update state
-    const { data, error } = await supabase
+    // After upload, re-fetch from Supabase to get the real count
+    // Only replace local state if Supabase now has at least as many rows (upload succeeded fully)
+    const { data: remoteData } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', user.id)
       .order('date', { ascending: false })
-    if (!error && data) {
-      setTransactions(data)
-      localSave(data)
+    if (remoteData && remoteData.length >= withUser.length) {
+      setTransactions(remoteData)
+      localSave(remoteData)
     }
+    // If Supabase has fewer rows than local, keep local state intact
 
     setCloudSyncing(false)
     setCloudSyncDone(true)
-    return { synced: data?.length ?? withUser.length }
+    return { synced: remoteData?.length ?? withUser.length }
   }, [user])
 
   async function addTransactions(newItems) {
