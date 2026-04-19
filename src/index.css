@@ -1999,8 +1999,21 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 @media (max-width: 600px) {
   .sidebar { display: none; }
   .app-main { margin-left: 0; padding: 0; }
-  .topbar { display: flex; position: sticky; top: 0; z-index: 100; }
   .page-content { padding: 12px; }
+
+  /* ── Topbar mobile ── */
+  .topbar {
+    display: flex; position: sticky; top: 0; z-index: 100;
+    padding: 0 12px; gap: 8px; height: 50px; flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .topbar-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  .topbar-right { gap: 6px; flex-shrink: 0; }
+  .topbar-search { display: none; }       /* search is per-page on mobile */
+  .topbar-action { display: none; }       /* import is in each page */
+  .theme-btn-label { display: none; }     /* only icons in theme toggle */
+  .theme-btn { padding: 6px 8px; font-size: 13px; }
+  .period-tab { padding: 5px 9px; font-size: 9px; }
 
   /* Mobile topbar */
   .mobile-topbar {
@@ -2020,9 +2033,28 @@ input { font-family: inherit; background: transparent; border: none; outline: no
   .annual-table th, .annual-table td { font-size: 11px; padding: 6px 8px; min-width: 44px; }
   .annual-table th:first-child, .annual-table td:first-child { min-width: 120px; position: sticky; left: 0; background: var(--bg-surface); z-index: 2; }
 
-  .settings-layout { flex-direction: column; }
-  .settings-sidebar { width: 100%; flex-direction: row; overflow-x: auto; }
-  .settings-pane { width: 100%; }
+  /* Settings: stack nav on top, content below */
+  .settings-layout { grid-template-columns: 1fr; gap: 12px; }
+  .settings-nav {
+    position: static !important;
+    display: flex; flex-direction: row;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    gap: 0; border-radius: 12px;
+    scrollbar-width: none;
+  }
+  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav-item {
+    flex-shrink: 0; flex-direction: column;
+    gap: 4px; padding: 10px 14px;
+    border-bottom: none; border-right: 1px solid var(--border);
+    font-size: 11px; white-space: nowrap;
+    align-items: center; justify-content: center;
+  }
+  .settings-nav-item:last-child { border-right: none; }
+  .settings-nav-icon { font-size: 18px; }
+  .settings-content { width: 100%; }
+  .settings-row { flex-wrap: wrap; gap: 8px; padding: 14px 16px; }
+  .settings-row-control { width: 100%; justify-content: flex-end; }
 
   .mov-controls { flex-wrap: wrap; gap: 6px; }
   .mov-controls select, .mov-controls button { font-size: 12px; }
@@ -2040,6 +2072,27 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 
   .proj-hero-card { padding: 20px; }
   .proj-big { font-size: 40px; }
+
+  /* Conciliaciones: stack columns */
+  .conc-layout, .conc-columns { grid-template-columns: 1fr; flex-direction: column; }
+  .conc-col { width: 100%; }
+
+  /* Categorías page */
+  .cat-page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* Recurrentes: cards full width */
+  .rec-detected-grid { grid-template-columns: 1fr; }
+
+  /* Proyecciones: scenario strip 2 cols */
+  .proj-kpi-strip { grid-template-columns: 1fr 1fr; }
+
+  /* Make inputs/selects full width on mobile */
+  .settings-input { width: 100%; box-sizing: border-box; }
+  .settings-select { max-width: 100%; }
+
+  /* Panel sections: reduce padding */
+  .settings-section-header { padding: 14px 16px 12px; }
+  .settings-section-title { font-size: 15px; }
 }
 /* ══════════════════════════════════════════
    MOBILE BOTTOM NAV
