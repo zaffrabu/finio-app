@@ -8,7 +8,7 @@ const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
   const { user } = useAuthContext()
-  const { transactions, addTransactions: _addTransactions, updateCategory: updateTxCategory, updateTransaction, deleteTransaction, deleteAllTransactions, syncing } = useTransactions(user)
+  const { transactions, addTransactions: _addTransactions, updateCategory: updateTxCategory, updateTransaction, deleteTransaction, deleteAllTransactions, syncing, cloudSyncing, cloudSyncDone, syncToCloud } = useTransactions(user)
 
   const [lastImportAt, setLastImportAt] = useState(() => localStorage.getItem('finio_last_import') || null)
 
@@ -90,6 +90,11 @@ export function DataProvider({ children }) {
 
     // Import tracking
     lastImportAt,
+
+    // Sync state
+    cloudSyncing,
+    cloudSyncDone,
+    syncToCloud,
 
     // Actions
     addTransactions,

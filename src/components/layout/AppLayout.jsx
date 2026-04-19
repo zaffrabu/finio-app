@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
-import { DataProvider } from '../../contexts/DataContext'
+import { DataProvider, useData } from '../../contexts/DataContext'
 import { supabaseReady } from '../../lib/supabase'
 
 const MOBILE_NAV = [
@@ -112,21 +112,65 @@ function UpdateBanner() {
   )
 }
 
-export default function AppLayout() {
-  const [collapsed, setCollapsed] = useState(false)
+// Banner shown while auto-syncing local data to Supabase
+function CloudSyncBanner() {
+  const { cloudSyncing, cloudSyncDone, transactions } = useData()
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => { if (cloudSyncing || cloudSyncDone) setVisible(true) }, [cloudSyncing, cloudSyncDone])
+  useEffect(() => { if (cloudSyncDone) { const t = setTimeout(() => setVisible(false), 4000); return () => clearTimeout(t) } }, [cloudSyncDone])
+
+  if (!visible) return null
 
   return (
-    <DataProvider>
-      {!supabaseReady && <StaleAppBanner />}
+    <div style={{
+      position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9997, background: 'var(--bg-surface)',
+      border: `1px solid ${cloudSyncDone ? 'var(--acento)' : 'var(--aviso)'}`,
+      borderRadius: 12, padding: '10px 18px',
+      display: 'flex', alignItems: 'center', gap: 10,
+      fontFamily: "'Poppins', sans-serif", fontSize: 13,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)', whiteSpace: 'nowrap',
+    }}>
+      {cloudSyncing ? (
+        <>
+          <div style={{ width: 16, height: 16, border: '2px solid var(--aviso)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'authSpin 0.6s linear infinite' }} />
+          <span>Sincronizando {transactions.length} movimientos a la nube…</span>
+        </>
+      ) : (
+        <>
+          <span style={{ color: 'var(--acento)' }}>✅</span>
+          <span>Datos sincronizados correctamente</span>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AppInner() {
+  const [collapsed, setCollapsed] = useState(false)
+  const bannerVisible = !supabaseReady
+  return (
+    <>
+      {bannerVisible && <StaleAppBanner />}
       <UpdateBanner />
+      <CloudSyncBanner />
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
-      <div className="main-area" style={!supabaseReady ? { marginTop: 48 } : undefined}>
+      <div className="main-area" style={bannerVisible ? { marginTop: 48 } : undefined}>
         <Topbar />
         <div className="content-area">
           <Outlet />
         </div>
       </div>
       <MobileBottomNav />
+    </>
+  )
+}
+
+export default function AppLayout() {
+  return (
+    <DataProvider>
+      <AppInner />
     </DataProvider>
   )
 }
