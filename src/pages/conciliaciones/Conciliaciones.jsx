@@ -165,6 +165,80 @@ function VincularModal({ selectedPrevs, reales, onConfirm, onClose }) {
   )
 }
 
+// ── Modal: diferencia pendiente post-conciliación ─────────────────────────────
+function DiffPrevistoModal({ diff, prevTx, onSave, onClose }) {
+  // Default date: same day as previsto but next month
+  const nextMonthDate = (() => {
+    const d = new Date(prevTx.date)
+    d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
+
+  const [targetDate, setTargetDate] = useState(nextMonthDate)
+  const [saving, setSaving] = useState(false)
+
+  const fieldStyle = {
+    width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 13,
+    border: '1px solid var(--border)', background: 'var(--bg-surface)',
+    color: 'var(--text-primary)', fontFamily: 'inherit', boxSizing: 'border-box',
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave(targetDate)
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div className="cat-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="cat-modal" style={{ maxWidth: 440 }}>
+        <div className="cat-modal-header">
+          <div className="cat-modal-title">⚠️ Cobro con diferencia</div>
+          <button className="cat-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="cat-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Info diferencia */}
+          <div style={{ background: 'rgba(255,184,48,0.1)', border: '1px solid rgba(255,184,48,0.3)',
+            borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--aviso)', marginBottom: 6 }}>
+              El cobro real es {fmt(diff)} € menor que el previsto
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Previsto: <strong>{prevTx.description}</strong> · +{fmt(prevTx.amount)} €<br/>
+              Diferencia pendiente: <strong style={{ color: 'var(--aviso)' }}>+{fmt(diff)} €</strong>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+            ¿Quieres crear un nuevo <strong>previsto</strong> por los <strong style={{ color: 'var(--aviso)' }}>{fmt(diff)} € pendientes</strong> para el mes siguiente?
+          </div>
+
+          {/* Fecha */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+              FECHA DEL NUEVO PREVISTO
+            </label>
+            <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={fieldStyle} />
+          </div>
+
+          <div style={{ background: 'rgba(46,184,122,0.06)', border: '1px solid rgba(46,184,122,0.18)',
+            borderRadius: 9, padding: '10px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
+            Se creará: <strong>{prevTx.description}</strong> · <span style={{ color: 'var(--acento)', fontWeight: 700 }}>+{fmt(diff)} €</span> · previsto para {targetDate}
+          </div>
+        </div>
+        <div className="cat-modal-footer">
+          <button className="btn-secondary" onClick={onClose}>No, ignorar diferencia</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving || !targetDate}>
+            {saving ? 'Creando...' : '✅ Crear previsto'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function Conciliaciones() {
   const { transactions, addTransactions, updateTransaction } = useData()
@@ -177,6 +251,7 @@ export default function Conciliaciones() {
   const [showVincular, setShowVincular]       = useState(false)
   const [matches, setMatches]                 = useState(loadMatches)
   const [catFilter, setCatFilter]             = useState('all')
+  const [pendingDiff, setPendingDiff]         = useState(null)  // { diff, prevTx }
 
   // Persist matches
   useEffect(() => { saveMatches(matches) }, [matches])
@@ -258,6 +333,7 @@ export default function Conciliaciones() {
 
   const handleConciliar = useCallback(async ({ previstosIds, realId, newPago, metodo, nota, totalPrevisto: tp }) => {
     let finalRealId = realId
+    let realAmount = 0
 
     // Si es pago nuevo, crearlo como transacción real
     if (newPago) {
@@ -274,6 +350,10 @@ export default function Conciliaciones() {
       }
       await addTransactions([tx])
       finalRealId = tx.id
+      realAmount = newPago.amount
+    } else if (realId) {
+      const realTx = transactions.find(t => t.id === realId)
+      realAmount = realTx ? Math.abs(realTx.amount) : 0
     }
 
     const newMatch = {
@@ -294,7 +374,34 @@ export default function Conciliaciones() {
 
     setSelectedPrevIds(new Set())
     setShowVincular(false)
-  }, [selectedPrevs, selectedMonth, addTransactions, updateTransaction])
+
+    // Detectar diferencia: si cobré menos de lo previsto, ofrecer crear previsto por la diferencia
+    const totalPrev = Math.abs(tp)
+    const diff = totalPrev - realAmount
+    if (diff > 0.01 && selectedPrevs.length > 0) {
+      // Usamos el primer previsto como referencia para la descripción y fecha
+      setPendingDiff({ diff, prevTx: selectedPrevs[0] })
+    }
+  }, [selectedPrevs, selectedMonth, transactions, addTransactions, updateTransaction])
+
+  const handleSaveDiff = useCallback(async (targetDate) => {
+    if (!pendingDiff) return
+    const { diff, prevTx } = pendingDiff
+    const newPrevisto = {
+      id: crypto.randomUUID(),
+      date: targetDate,
+      description: prevTx.description,
+      detail: `Diferencia pendiente (cobro parcial de ${fmt(Math.abs(prevTx.amount))} €)`,
+      amount: Math.abs(prevTx.amount) > 0 ? diff : -diff,  // same sign as original
+      category: prevTx.category || '',
+      tipo: prevTx.tipo || 'Ingreso',
+      account: prevTx.account || '',
+      status: 'previsto',
+      matchSource: 'manual',
+    }
+    await addTransactions([newPrevisto])
+    setPendingDiff(null)
+  }, [pendingDiff, addTransactions])
 
   const handleDeleteMatch = async (id) => {
     const match = matches.find(m => m.id === id)
@@ -325,6 +432,16 @@ export default function Conciliaciones() {
           reales={pendingReales}
           onConfirm={handleConciliar}
           onClose={() => setShowVincular(false)}
+        />
+      )}
+
+      {/* Modal diferencia post-conciliación */}
+      {pendingDiff && (
+        <DiffPrevistoModal
+          diff={pendingDiff.diff}
+          prevTx={pendingDiff.prevTx}
+          onSave={handleSaveDiff}
+          onClose={() => setPendingDiff(null)}
         />
       )}
 
