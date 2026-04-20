@@ -81,22 +81,28 @@ export function useTransactions(user) {
         .order('date', { ascending: false })
 
       if (!error && data) {
-        if (data.length > 0) {
-          // ✅ Supabase has data — use it as source of truth
-          setTransactions(data)
-          localSave(data)
-        } else {
-          // Supabase is empty — load from local cache
-          const local = localLoad()
-          setTransactions(local)
+        const local = localLoad()
 
-          // 🔄 Auto-sync: if local has data, push it to Supabase silently
-          if (local.length > 0) {
+        if (data.length === 0 && local.length === 0) {
+          // Nothing anywhere
+          setTransactions([])
+        } else {
+          // Merge: Supabase rows + any local rows not yet in Supabase (by id)
+          const supabaseIds = new Set(data.map(t => t.id))
+          const localOnly   = local.filter(t => t.id && !supabaseIds.has(t.id))
+          const merged      = [...data, ...localOnly]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+
+          setTransactions(merged)
+          localSave(merged)
+
+          // 🔄 Push local-only rows to Supabase if any
+          if (localOnly.length > 0) {
+            console.log(`[sync] auto-uploading ${localOnly.length} local-only rows`)
             setCloudSyncing(true)
-            const withUser = local.map(t => ({
+            const withUser = localOnly.map(t => ({
               ...t,
               user_id: user.id,
-              // ensure required fields are not null
               id: t.id || crypto.randomUUID(),
             }))
             await insertBatched(withUser)
