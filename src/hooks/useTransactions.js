@@ -121,6 +121,47 @@ export function useTransactions(user) {
     load()
   }, [user?.id])
 
+  // Full resync: wipe Supabase for this user, then re-upload everything from current state
+  const fullResync = useCallback(async (currentTxs) => {
+    if (!user || !supabaseReady) return { synced: 0, error: 'No disponible' }
+    setCloudSyncing(true)
+
+    // 1. Delete everything from Supabase for this user
+    const { error: delError } = await supabase
+      .from('transactions').delete().eq('user_id', user.id)
+    if (delError) {
+      console.error('[fullResync] delete error:', delError.message)
+      setCloudSyncing(false)
+      return { synced: 0, error: delError.message }
+    }
+
+    // 2. Upload all current transactions
+    const rows = (currentTxs || localLoad()).map(t => ({
+      ...t,
+      user_id: user.id,
+      id: t.id || crypto.randomUUID(),
+    }))
+    if (rows.length === 0) { setCloudSyncing(false); return { synced: 0 } }
+
+    await insertBatched(rows)
+
+    // 3. Confirm count from Supabase
+    const { data: remoteData } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+
+    if (remoteData && remoteData.length > 0) {
+      setTransactions(remoteData)
+      localSave(remoteData)
+    }
+
+    setCloudSyncing(false)
+    setCloudSyncDone(true)
+    return { synced: remoteData?.length ?? rows.length }
+  }, [user])
+
   // Manual sync trigger (from Settings button)
   const syncToCloud = useCallback(async () => {
     if (!user || !supabaseReady) return { synced: 0, error: 'No disponible' }
@@ -222,6 +263,6 @@ export function useTransactions(user) {
   return {
     transactions, syncing, cloudSyncing, cloudSyncDone,
     addTransactions, updateCategory, updateTransaction,
-    deleteTransaction, deleteAllTransactions, syncToCloud,
+    deleteTransaction, deleteAllTransactions, syncToCloud, fullResync,
   }
 }

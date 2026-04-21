@@ -432,7 +432,7 @@ function SectionHeader({ icon, iconBg, title, desc }) {
 export default function Ajustes() {
   const navigate = useNavigate()
   const { user, signOut } = useAuthContext()
-  const { settings, categories, spendingByCategory, transactions, income, saveSettings, addCategory, updateCategory, deleteCategory, loading, syncToCloud, cloudSyncing, cloudSyncDone } = useData()
+  const { settings, categories, spendingByCategory, transactions, income, saveSettings, addCategory, updateCategory, deleteCategory, loading, syncToCloud, cloudSyncing, cloudSyncDone, fullResync } = useData()
 
   const [activePane, setActivePane] = useState('perfil')
   const [saveError, setSaveError] = useState('')
@@ -508,6 +508,9 @@ export default function Ajustes() {
   const totalReal   = budgetRows.reduce((s, r) => s + r.real, 0)
   const totalDev    = totalReal - totalBudget
 
+  const [confirmFullResync, setConfirmFullResync] = useState(false)
+  const [fullResyncing, setFullResyncing] = useState(false)
+  const [fullResyncResult, setFullResyncResult] = useState(null)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
   const [deletingAll, setDeletingAll] = useState(false)
   const [expandedCats, setExpandedCats] = useState(new Set())
@@ -1232,6 +1235,44 @@ export default function Ajustes() {
                     ) : cloudSyncDone ? '✅ Listo' : '☁️ Sincronizar ahora'}
                   </button>
                 </SettingsRow>
+              </div>
+
+              {/* Re-sincronización completa */}
+              <div className="danger-zone" style={{ marginTop: 8 }}>
+                <div className="danger-zone-header">
+                  <span className="danger-zone-title">Re-sincronización completa</span>
+                </div>
+                <div className="danger-row">
+                  <div className="danger-row-info">
+                    <div className="danger-row-label">Limpiar nube y volver a subir todo</div>
+                    <div className="danger-row-sub">
+                      Borra todos los movimientos de Supabase y los sube de nuevo desde este dispositivo ({transactions.length} movimientos). Úsalo si la nube tiene datos incompletos.
+                    </div>
+                    {fullResyncResult && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--acento)', fontWeight: 600 }}>
+                        ✅ Subidos {fullResyncResult} movimientos correctamente
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="danger-btn"
+                    style={confirmFullResync ? { background: 'var(--alerta)', color: '#fff', minWidth: 180 } : { minWidth: 180 }}
+                    disabled={fullResyncing || transactions.length === 0}
+                    onClick={async () => {
+                      if (!confirmFullResync) { setConfirmFullResync(true); return }
+                      setFullResyncing(true)
+                      setConfirmFullResync(false)
+                      setFullResyncResult(null)
+                      const result = await fullResync(transactions)
+                      setFullResyncing(false)
+                      if (result?.error) alert('Error: ' + result.error)
+                      else setFullResyncResult(result?.synced ?? 0)
+                    }}
+                    onBlur={() => setConfirmFullResync(false)}
+                  >
+                    {fullResyncing ? '⏳ Re-sincronizando…' : confirmFullResync ? '¿Seguro? Pulsa de nuevo' : '🔁 Re-sincronizar todo'}
+                  </button>
+                </div>
               </div>
 
               <div className="settings-section">
